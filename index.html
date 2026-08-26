@@ -1,0 +1,1280 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sistema de Controle de NE e DANFE - DSpace</title>
+  <style>
+    :root {
+      --primary: #1b4332;
+      --primary-light: #2d6a4f;
+      --secondary: #52b788;
+      --bg: #f8f9fa;
+      --card-bg: #ffffff;
+      --text: #212529;
+      --text-muted: #6c757d;
+      --border: #dee2e6;
+      --warning: #ffb703;
+      --success: #38b000;
+      --danger: #d90429;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+
+    body {
+      background-color: var(--bg);
+      color: var(--text);
+      display: flex;
+      min-height: 100vh;
+    }
+
+    aside {
+      width: 260px;
+      background-color: var(--primary);
+      color: white;
+      display: flex;
+      flex-direction: column;
+      padding: 20px;
+    }
+
+    aside h2 {
+      font-size: 1.2rem;
+      margin-bottom: 20px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      border-bottom: 1px solid var(--primary-light);
+      padding-bottom: 10px;
+    }
+
+    .operator-card {
+      background-color: var(--primary-light);
+      padding: 12px;
+      border-radius: 8px;
+      margin-bottom: 15px;
+    }
+
+    .operator-card label {
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      color: var(--secondary);
+      font-weight: bold;
+      display: block;
+      margin-bottom: 5px;
+    }
+
+    .operator-card select {
+      width: 100%;
+      padding: 8px;
+      border-radius: 4px;
+      border: 1px solid var(--secondary);
+      background-color: white;
+      color: var(--text);
+      font-weight: 500;
+      cursor: pointer;
+    }
+
+    .admin-status-box {
+      background-color: rgba(0, 0, 0, 0.2);
+      padding: 10px;
+      border-radius: 6px;
+      margin-bottom: 20px;
+      font-size: 0.8rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    nav ul {
+      list-style: none;
+    }
+
+    nav li {
+      margin-bottom: 8px;
+    }
+
+    nav button {
+      width: 100%;
+      text-align: left;
+      background: none;
+      border: none;
+      color: #d8f3dc;
+      padding: 12px 15px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 0.95rem;
+      transition: all 0.2s;
+    }
+
+    nav button:hover, nav button.active {
+      background-color: var(--primary-light);
+      color: white;
+      font-weight: bold;
+    }
+
+    main {
+      flex: 1;
+      padding: 30px;
+      overflow-y: auto;
+    }
+
+    .tab-content {
+      display: none;
+    }
+
+    .tab-content.active {
+      display: block;
+    }
+
+    .metrics-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      gap: 15px;
+      margin-bottom: 25px;
+    }
+
+    .metric-card {
+      background-color: var(--card-bg);
+      padding: 15px;
+      border-radius: 8px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+      border-left: 4px solid var(--primary);
+    }
+
+    .metric-card h3 {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      margin-bottom: 5px;
+    }
+
+    .metric-card .value {
+      font-size: 1.4rem;
+      font-weight: bold;
+      color: var(--primary);
+    }
+
+    .controls-card {
+      background-color: var(--card-bg);
+      padding: 20px;
+      border-radius: 8px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+      margin-bottom: 25px;
+    }
+
+    .filters-container {
+      transition: all 0.3s ease;
+      overflow: hidden;
+    }
+
+    .filters-container.collapsed {
+      display: none;
+    }
+
+    .filters-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 15px;
+      margin-top: 15px;
+    }
+
+    input, select, button.btn {
+      padding: 8px 12px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      font-size: 0.85rem;
+    }
+
+    .btn-primary {
+      background-color: var(--primary);
+      color: white;
+      border: none;
+      cursor: pointer;
+      font-weight: bold;
+      transition: background 0.2s;
+    }
+
+    .btn-primary:hover {
+      background-color: var(--primary-light);
+    }
+
+    .btn-secondary {
+      background-color: #6c757d;
+      color: white;
+      border: none;
+      cursor: pointer;
+    }
+
+    .btn-danger {
+      background-color: var(--danger);
+      color: white;
+      border: none;
+      cursor: pointer;
+    }
+
+    .btn-sm {
+      padding: 4px 8px;
+      font-size: 0.75rem;
+    }
+
+    .table-container {
+      background-color: var(--card-bg);
+      border-radius: 8px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+      overflow-x: auto;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      text-align: left;
+      font-size: 0.85rem;
+    }
+
+    th, td {
+      padding: 10px 12px;
+      border-bottom: 1px solid var(--border);
+      white-space: nowrap;
+    }
+
+    th {
+      background-color: #f1f3f5;
+      color: var(--text-muted);
+      font-weight: 600;
+      position: relative;
+    }
+
+    .col-filter-select {
+      font-size: 0.75rem;
+      padding: 2px 4px;
+      margin-top: 4px;
+      width: 100%;
+    }
+
+    .badge {
+      padding: 4px 8px;
+      border-radius: 12px;
+      font-size: 0.75rem;
+      font-weight: bold;
+      display: inline-block;
+    }
+
+    .badge-publicar { background-color: #fff3bf; color: #856404; }
+    .badge-publicado { background-color: #d4edda; color: #155724; }
+
+    .goals-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 20px;
+    }
+
+    .goal-card {
+      background: var(--card-bg);
+      padding: 20px;
+      border-radius: 8px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+      margin-bottom: 20px;
+    }
+
+    .goal-card h3 {
+      margin-bottom: 15px;
+      color: var(--primary);
+    }
+
+    .form-group {
+      margin-bottom: 15px;
+    }
+
+    .form-group label {
+      display: block;
+      font-size: 0.85rem;
+      margin-bottom: 5px;
+      font-weight: 600;
+    }
+
+    .form-group input, .form-group select, .form-group textarea {
+      width: 100%;
+    }
+
+    .progress-bar-bg {
+      background-color: var(--border);
+      height: 12px;
+      border-radius: 6px;
+      overflow: hidden;
+      margin-top: 10px;
+    }
+
+    .progress-bar-fill {
+      background-color: var(--secondary);
+      height: 100%;
+      width: 0%;
+      transition: width 0.3s ease;
+    }
+
+    .modal-backdrop {
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0,0,0,0.5);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+    }
+
+    .modal {
+      background: white;
+      padding: 25px;
+      border-radius: 8px;
+      width: 100%;
+      max-width: 700px;
+      max-height: 90vh;
+      overflow-y: auto;
+    }
+
+    .modal-sm {
+      max-width: 400px;
+    }
+
+    .modal-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 12px;
+    }
+
+    .sync-status {
+      font-size: 0.8rem;
+      padding: 4px 8px;
+      border-radius: 4px;
+      margin-left: 10px;
+    }
+    .status-online { background-color: #d4edda; color: #155724; }
+    .status-offline { background-color: #f8d7da; color: #721c24; }
+
+    .admin-only-disabled {
+      opacity: 0.5;
+      pointer-events: none;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Menu Lateral -->
+  <aside>
+    <h2>Painel DSpace</h2>
+
+    <div class="operator-card">
+      <label for="sideOperatorSelect">Operador Ativo</label>
+      <select id="sideOperatorSelect" onchange="changeOperator(this.value)"></select>
+    </div>
+
+    <div class="admin-status-box">
+      <span id="adminStatusLabel">🔓 Modo Operador</span>
+      <button class="btn btn-secondary btn-sm" onclick="toggleAdminAuth()" id="adminAuthBtn">Login Admin</button>
+    </div>
+
+    <nav>
+      <ul>
+        <li><button class="active" onclick="switchTab('tab-dashboard', this)">📋 Visão Geral & NEs</button></li>
+        <li><button onclick="switchTab('tab-metas', this)">🎯 Metas de Publicação</button></li>
+        <li><button onclick="switchTab('tab-config', this)">⚙️ Configurações</button></li>
+      </ul>
+    </nav>
+  </aside>
+
+  <!-- Conteúdo Principal -->
+  <main>
+
+    <!-- ABA 1: DASHBOARD & NEs -->
+    <section id="tab-dashboard" class="tab-content active">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+        <h2>Controle de Notas de Empenho</h2>
+        <span id="syncIndicator" class="sync-status status-offline">Modo Offline (Sem URL API)</span>
+      </div>
+
+      <!-- CARDS SUPERIORES: TOTAL DE NEs POR FASE -->
+      <div class="metrics-grid">
+        <div class="metric-card" style="border-left-color: #007bff;">
+          <h3>Total Empenhado</h3>
+          <div class="value" id="faseEmpenhado">0</div>
+        </div>
+        <div class="metric-card" style="border-left-color: #ffc107;">
+          <h3>Total Liquidado</h3>
+          <div class="value" id="faseLiquidado">0</div>
+        </div>
+        <div class="metric-card" style="border-left-color: #17a2b8;">
+          <h3>Total Pago</h3>
+          <div class="value" id="fasePago">0</div>
+        </div>
+        <div class="metric-card" style="border-left-color: #28a745;">
+          <h3>Total Encerrado</h3>
+          <div class="value" id="faseEncerrado">0</div>
+        </div>
+        <div class="metric-card" style="border-left-color: #dc3545;">
+          <h3>Total Anulado</h3>
+          <div class="value" id="faseAnulado">0</div>
+        </div>
+      </div>
+
+      <!-- PAINEL DE CONTROLES E PESQUISA COLAPSÁVEL -->
+      <div class="controls-card">
+        <div style="display: flex; justify-content: space-between; align-items: center; gap: 15px; flex-wrap: wrap;">
+          <input type="text" id="searchInput" placeholder="Pesquisa geral por NE, Processo, Descrição, UASG..." style="flex: 1; min-width: 250px;" oninput="applyFilters()">
+          
+          <button class="btn btn-secondary" onclick="toggleFiltersPanel()">
+            🔍 <span id="btnToggleFilterText">Ocultar Filtros</span>
+          </button>
+          
+          <button class="btn btn-primary" onclick="openModal()">+ Nova NE</button>
+        </div>
+
+        <div id="collapsibleFilters" class="filters-container">
+          <div class="filters-grid">
+            <select id="filterAno" onchange="applyFilters()">
+              <option value="">Todos os Anos</option>
+              <option value="2024">2024</option>
+              <option value="2025">2025</option>
+              <option value="2026">2026</option>
+            </select>
+
+            <select id="filterCategoria" onchange="applyFilters()">
+              <option value="">Todas as Categorias</option>
+              <option value="UGG">UGG</option>
+              <option value="UGP">UGP</option>
+              <option value="UGNP">UGNP</option>
+              <option value="DISP">DISP</option>
+              <option value="INEX">INEX</option>
+              <option value="AJ CUSTO">AJ CUSTO</option>
+              <option value="IND TRNSP">IND TRNSP</option>
+              <option value="PASSG">PASSG</option>
+              <option value="DIÁRIA">DIÁRIA</option>
+            </select>
+
+            <select id="filterSituacao" onchange="applyFilters()">
+              <option value="">Todas as Situações</option>
+              <option value="Publicar">Publicar</option>
+              <option value="Publicado">Publicado</option>
+              <option value="Arquivado">Arquivado</option>
+              <option value="Cancelado">Cancelado</option>
+            </select>
+
+            <select id="filterFase" onchange="applyFilters()">
+              <option value="">Todas as Fases</option>
+              <option value="Empenhado">Empenhado</option>
+              <option value="Liquidado">Liquidado</option>
+              <option value="Pago">Pago</option>
+              <option value="Encerrado">Encerrado</option>
+              <option value="Anulado">Anulado</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <!-- TABELA COM FILTROS ESPECÍFICOS NAS COLUNAS -->
+      <div class="table-container">
+        <table>
+          <thead>
+            <tr>
+              <th>
+                <div>ANO</div>
+                <select class="col-filter-select" onchange="applyColumnFilter('ano', this.value)">
+                  <option value="">Todos</option>
+                </select>
+              </th>
+              <th>
+                <div>NE</div>
+                <input type="text" class="col-filter-select" placeholder="Filtrar..." oninput="applyColumnFilter('ne', this.value)">
+              </th>
+              <th>
+                <div>UG</div>
+                <select class="col-filter-select" onchange="applyColumnFilter('ug', this.value)">
+                  <option value="">Todas</option>
+                </select>
+              </th>
+              <th>
+                <div>CATEGORIA</div>
+                <select class="col-filter-select" onchange="applyColumnFilter('categoria', this.value)">
+                  <option value="">Todas</option>
+                </select>
+              </th>
+              <th>
+                <div>TIPO</div>
+                <select class="col-filter-select" onchange="applyColumnFilter('tipo', this.value)">
+                  <option value="">Todos</option>
+                </select>
+              </th>
+              <th>PROCESSO</th>
+              <th>DESCRIÇÃO</th>
+              <th>UASG</th>
+              <th>
+                <div>SITUAÇÃO</div>
+                <select class="col-filter-select" onchange="applyColumnFilter('situacao', this.value)">
+                  <option value="">Todas</option>
+                </select>
+              </th>
+              <th>
+                <div>FASE</div>
+                <select class="col-filter-select" onchange="applyColumnFilter('fase', this.value)">
+                  <option value="">Todas</option>
+                </select>
+              </th>
+              <th>VALOR TOTAL</th>
+              <th>PUBLI</th>
+              <th>RESPONSÁVEL</th>
+              <th>ATU</th>
+            </tr>
+          </thead>
+          <tbody id="neTableBody"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ABA 2: METAS -->
+    <section id="tab-metas" class="tab-content">
+      <h2 style="margin-bottom: 20px;">Metas de Publicação no DSpace</h2>
+      
+      <div class="goals-grid">
+        <div class="goal-card">
+          <h3>Definição de Metas Personalizadas</h3>
+          <form id="goalForm" onsubmit="saveGoals(event)">
+            <div class="form-group">
+              <label for="targetNE">Meta de NEs a Publicar:</label>
+              <input type="number" id="targetNE" min="1" required>
+            </div>
+            <div class="form-group">
+              <label for="targetDanfe">Meta de DANFEs/Notas Fiscais a Publicar:</label>
+              <input type="number" id="targetDanfe" min="1" required>
+            </div>
+            <button type="submit" class="btn btn-primary" style="width: 100%;">Salvar Metas</button>
+          </form>
+        </div>
+
+        <div class="goal-card">
+          <h3>Progresso Atual</h3>
+          <div style="margin-bottom: 20px;">
+            <div style="display: flex; justify-content: space-between; font-size: 0.9rem;">
+              <span>Publicação de NEs:</span>
+              <strong id="progressNEText">0 / 0</strong>
+            </div>
+            <div class="progress-bar-bg">
+              <div id="progressBarNE" class="progress-bar-fill"></div>
+            </div>
+          </div>
+
+          <div>
+            <div style="display: flex; justify-content: space-between; font-size: 0.9rem;">
+              <span>Publicação de DANFEs/NFs:</span>
+              <strong id="progressDanfeText">0 / 0</strong>
+            </div>
+            <div class="progress-bar-bg">
+              <div id="progressBarDanfe" class="progress-bar-fill" style="background-color: #3a86ff;"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ABA 3: CONFIGURAÇÕES DA PLANILHA E USUÁRIOS -->
+    <section id="tab-config" class="tab-content">
+      <h2 style="margin-bottom: 20px;">Configurações do Sistema</h2>
+      
+      <!-- PAINEL RESTRITO AO ADMINISTRADOR PARA CONEXÃO COM API -->
+      <div id="adminConfigSection" class="goal-card admin-only-disabled" style="max-width: 650px;">
+        <h3>🔗 Integração com Google Sheets (API Endpoint) <span style="font-size: 0.7rem; color: var(--danger);">(Requer Administrador)</span></h3>
+        <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 15px;">
+          Cole abaixo a URL gerada ao publicar o script do Google Sheets como <strong>App da Web</strong>.
+        </p>
+
+        <div class="form-group">
+          <label for="googleScriptUrl">URL do Web App (Google Apps Script):</label>
+          <input type="url" id="googleScriptUrl" placeholder="https://script.google.com/macros/s/.../exec">
+        </div>
+        <button class="btn btn-primary" onclick="saveGoogleConfig()">Salvar e Conectar API</button>
+      </div>
+
+      <!-- PAINEL RESTRITO AO ADMINISTRADOR PARA GESTÃO DE OPERADORES -->
+      <div id="adminOpsSection" class="goal-card admin-only-disabled" style="max-width: 650px;">
+        <h3>👤 Gestão de Operadores <span style="font-size: 0.7rem; color: var(--danger);">(Requer Administrador)</span></h3>
+        <div class="form-group">
+          <label for="newOperatorName">Adicionar Novo Operador:</label>
+          <div style="display: flex; gap: 10px;">
+            <input type="text" id="newOperatorName" placeholder="Ex: 3º Sgt Silva">
+            <button class="btn btn-primary" onclick="addOperator()">Adicionar</button>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>Operadores Habilitados:</label>
+          <ul id="operatorList" style="list-style: none; border: 1px solid var(--border); border-radius: 6px; padding: 10px;"></ul>
+        </div>
+      </div>
+
+      <!-- PAINEL RESTRITO DE ALTERAÇÃO DE SENHA DO ADMIN -->
+      <div id="adminPasswordSection" class="goal-card admin-only-disabled" style="max-width: 650px;">
+        <h3>🔐 Seguranças e Credenciais de Administrador</h3>
+        <form onsubmit="changeAdminPassword(event)">
+          <div class="form-group">
+            <label for="currentAdminPass">Senha Atual:</label>
+            <input type="password" id="currentAdminPass" required>
+          </div>
+          <div class="form-group">
+            <label for="newAdminPass">Nova Senha:</label>
+            <input type="password" id="newAdminPass" required>
+          </div>
+          <button type="submit" class="btn btn-primary">Alterar Senha de Administrador</button>
+        </form>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- MODAL DE AUTENTICAÇÃO ADMINISTRATIVA -->
+  <div id="adminAuthModal" class="modal-backdrop">
+    <div class="modal modal-sm">
+      <h3 style="margin-bottom: 15px;">Acesso Administrativo</h3>
+      <form onsubmit="handleAdminLogin(event)">
+        <div class="form-group">
+          <label for="adminUser">Usuário Admin:</label>
+          <input type="text" id="adminUser" value="admin" required>
+        </div>
+        <div class="form-group">
+          <label for="adminPass">Senha:</label>
+          <input type="password" id="adminPass" required>
+        </div>
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 15px;">
+          <button type="button" class="btn btn-secondary btn-sm" onclick="recoverAdminPassword()">Esqueceu a senha?</button>
+          <div>
+            <button type="button" class="btn btn-secondary" onclick="closeAdminModal()">Cancelar</button>
+            <button type="submit" class="btn btn-primary">Entrar</button>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL COMPLETO DE REGISTRO DE NOVA NE -->
+  <div id="neModal" class="modal-backdrop">
+    <div class="modal">
+      <h3 style="margin-bottom: 15px;">Registrar Nova Nota de Empenho</h3>
+      <form id="neForm" onsubmit="saveNE(event)">
+        <div class="modal-grid">
+          <div class="form-group">
+            <label>ANO</label>
+            <input type="number" id="modalAno" required>
+          </div>
+          <div class="form-group">
+            <label>Nº NE (6 dígitos)</label>
+            <input type="text" id="modalNE" placeholder="Ex: 400123" required>
+          </div>
+          <div class="form-group">
+            <label>UG</label>
+            <input type="text" id="modalUG" placeholder="Ex: 160300" required>
+          </div>
+
+          <div class="form-group">
+            <label>CATEGORIA</label>
+            <select id="modalCategoria" required>
+              <option value="UGG">UGG</option>
+              <option value="UGP">UGP</option>
+              <option value="UGNP">UGNP</option>
+              <option value="DISP">DISP</option>
+              <option value="INEX">INEX</option>
+              <option value="AJ CUSTO">AJ CUSTO</option>
+              <option value="IND TRNSP">IND TRNSP</option>
+              <option value="PASSG">PASSG</option>
+              <option value="DIÁRIA">DIÁRIA</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>TIPO</label>
+            <select id="modalTipo" required>
+              <option value="Ordinário">Ordinário</option>
+              <option value="Estimativo">Estimativo</option>
+              <option value="Global">Global</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>PROCESSO</label>
+            <input type="text" id="modalProcesso" placeholder="99/2026">
+          </div>
+
+          <div class="form-group" style="grid-column: span 2;">
+            <label>DESCRIÇÃO DO OBJETO</label>
+            <input type="text" id="modalDescricao" placeholder="Breve resumo..." required>
+          </div>
+          <div class="form-group">
+            <label>UASG</label>
+            <input type="text" id="modalUASG" required>
+          </div>
+
+          <div class="form-group">
+            <label>SITUAÇÃO</label>
+            <select id="modalSituacao" required>
+              <option value="Publicar">Publicar</option>
+              <option value="Publicado">Publicado</option>
+              <option value="Arquivado">Arquivado</option>
+              <option value="Cancelado">Cancelado</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>FASE</label>
+            <select id="modalFase" required>
+              <option value="Empenhado">Empenhado</option>
+              <option value="Liquidado">Liquidado</option>
+              <option value="Pago">Pago</option>
+              <option value="Encerrado">Encerrado</option>
+              <option value="Anulado">Anulado</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>VALOR TOTAL (R$)</label>
+            <input type="number" step="0.01" id="modalValor" required>
+          </div>
+
+          <div class="form-group">
+            <label>DATA PUBLI (DSpace)</label>
+            <input type="date" id="modalPubli">
+          </div>
+          <div class="form-group">
+            <label>DATA ATU (Fase)</label>
+            <input type="date" id="modalAtu" required>
+          </div>
+          <div class="form-group">
+            <label>RESPONSÁVEL</label>
+            <input type="text" id="modalResponsavel" style="background-color: #e9ecef;" readonly>
+          </div>
+        </div>
+
+        <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 15px;">
+          <button type="button" class="btn btn-secondary" onclick="closeModal()">Cancelar</button>
+          <button type="submit" class="btn btn-primary">Salvar NE</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    const SYNC_INTERVAL_MS = 15000;
+
+    const state = {
+      googleUrl: localStorage.getItem('ne_google_url') || '',
+      operators: [],
+      currentOperator: localStorage.getItem('ne_current_operator') || '',
+      goals: JSON.parse(localStorage.getItem('ne_goals')) || { targetNE: 50, targetDanfe: 30 },
+      columnFilters: {},
+      nes: [],
+      isAdminLoggedIn: false,
+      adminCredentials: JSON.parse(localStorage.getItem('ne_admin_cred')) || { user: 'admin', pass: 'admin123' }
+    };
+
+    document.addEventListener('DOMContentLoaded', () => {
+      document.getElementById('googleScriptUrl').value = state.googleUrl;
+      initGoalsForm();
+      updateAdminUI();
+      
+      if (state.googleUrl) {
+        fetchSheetData();
+        setInterval(fetchSheetData, SYNC_INTERVAL_MS);
+      } else {
+        updateSyncStatus(false);
+      }
+    });
+
+    async function fetchSheetData() {
+      if (!state.googleUrl) {
+        updateSyncStatus(false);
+        return;
+      }
+
+      try {
+        const response = await fetch(state.googleUrl);
+        if (!response.ok) throw new Error(`HTTP Error: ${response.status}`);
+        const resultData = await response.json();
+
+        // Processa operadores obtidos globalmente da planilha
+        if (resultData.operators && Array.isArray(resultData.operators)) {
+          state.operators = resultData.operators;
+          if (!state.currentOperator && state.operators.length > 0) {
+            state.currentOperator = state.operators[0];
+            localStorage.setItem('ne_current_operator', state.currentOperator);
+          }
+          renderOperators();
+        }
+
+        // Processa dados de NEs
+        const rawNEs = resultData.nes || (Array.isArray(resultData) ? resultData : []);
+        state.nes = rawNEs.map(row => {
+          const normalizedRow = {};
+          Object.keys(row).forEach(key => {
+            normalizedRow[key.trim().toUpperCase()] = row[key];
+          });
+
+          return {
+            ano: normalizedRow['ANO'] || new Date().getFullYear(),
+            ne: normalizedRow['NE'] ? String(normalizedRow['NE']) : 'N/A',
+            ug: normalizedRow['UG'] || 'N/A',
+            categoria: normalizedRow['CATEGORIA'] || 'UGG',
+            tipo: normalizedRow['TIPO'] || 'Ordinário',
+            processo: formatProcessoText(normalizedRow['PROCESSO']),
+            descricao: normalizedRow['DESCRIÇÃO'] || normalizedRow['DESCRICAO'] || '-',
+            uasg: normalizedRow['UASG'] || '-',
+            situacao: normalizedRow['SITUAÇÃO'] || normalizedRow['SITUACAO'] || 'Publicar',
+            fase: normalizedRow['FASE'] || 'Empenhado',
+            valor: parseCurrency(normalizedRow['VALOR TOTAL'] || normalizedRow['VALOR']),
+            publi: formatDate(normalizedRow['PUBLI']),
+            responsavel: normalizedRow['RESPONSÁVEL'] || normalizedRow['RESPONSAVEL'] || 'N/A',
+            atu: formatDate(normalizedRow['ATU'])
+          };
+        });
+
+        updateSyncStatus(true);
+        populateColumnDropdowns();
+        applyFilters();
+        updateDashboard();
+      } catch (error) {
+        console.error('Erro ao conectar à API do Google Sheets:', error);
+        updateSyncStatus(false);
+      }
+    }
+
+    /* CONTROLE E AUTENTICAÇÃO ADMINISTRATIVA */
+    function toggleAdminAuth() {
+      if (state.isAdminLoggedIn) {
+        state.isAdminLoggedIn = false;
+        alert('Sessão de administrador encerrada.');
+        updateAdminUI();
+      } else {
+        document.getElementById('adminAuthModal').style.display = 'flex';
+      }
+    }
+
+    function closeAdminModal() {
+      document.getElementById('adminAuthModal').style.display = 'none';
+    }
+
+    function handleAdminLogin(e) {
+      e.preventDefault();
+      const u = document.getElementById('adminUser').value.trim();
+      const p = document.getElementById('adminPass').value;
+
+      if (u === state.adminCredentials.user && p === state.adminCredentials.pass) {
+        state.isAdminLoggedIn = true;
+        closeAdminModal();
+        alert('Autenticado como Administrador do Sistema!');
+        updateAdminUI();
+      } else {
+        alert('Credenciais inválidas. Tente novamente.');
+      }
+    }
+
+    function updateAdminUI() {
+      const statusLabel = document.getElementById('adminStatusLabel');
+      const authBtn = document.getElementById('adminAuthBtn');
+      
+      const configSec = document.getElementById('adminConfigSection');
+      const opsSec = document.getElementById('adminOpsSection');
+      const passSec = document.getElementById('adminPasswordSection');
+
+      if (state.isAdminLoggedIn) {
+        statusLabel.textContent = '🔒 Admin Ativo';
+        authBtn.textContent = 'Sair';
+        configSec.classList.remove('admin-only-disabled');
+        opsSec.classList.remove('admin-only-disabled');
+        passSec.classList.remove('admin-only-disabled');
+      } else {
+        statusLabel.textContent = '🔓 Modo Operador';
+        authBtn.textContent = 'Login Admin';
+        configSec.classList.add('admin-only-disabled');
+        opsSec.classList.add('admin-only-disabled');
+        passSec.classList.add('admin-only-disabled');
+      }
+      renderOperators();
+    }
+
+    function changeAdminPassword(e) {
+      e.preventDefault();
+      if (!state.isAdminLoggedIn) return;
+
+      const curr = document.getElementById('currentAdminPass').value;
+      const next = document.getElementById('newAdminPass').value;
+
+      if (curr !== state.adminCredentials.pass) {
+        alert('Senha atual incorreta!');
+        return;
+      }
+
+      state.adminCredentials.pass = next;
+      localStorage.setItem('ne_admin_cred', JSON.stringify(state.adminCredentials));
+      alert('Senha de administrador alterada com sucesso!');
+      document.getElementById('currentAdminPass').value = '';
+      document.getElementById('newAdminPass').value = '';
+    }
+
+    function recoverAdminPassword() {
+      const resetConfirm = confirm("Deseja redefinir a senha de administrador para o padrão de fábrica ('admin123')?");
+      if (resetConfirm) {
+        state.adminCredentials = { user: 'admin', pass: 'admin123' };
+        localStorage.setItem('ne_admin_cred', JSON.stringify(state.adminCredentials));
+        alert("Senha redefinida com sucesso!\nUsuário: admin\nSenha: admin123");
+      }
+    }
+
+    /* FORMATADORES E UTILITÁRIOS */
+    function formatProcessoText(val) {
+      if (!val && val !== 0) return '-';
+      const str = String(val).trim();
+      if (str.includes('T') && str.includes('Z')) {
+        const d = new Date(str);
+        if (!isNaN(d.getTime())) {
+          return `${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}`;
+        }
+      }
+      return str;
+    }
+
+    function formatDate(val) {
+      if (!val) return '-';
+      const str = String(val).trim();
+      if (str.includes('T')) {
+        const d = new Date(str);
+        if (!isNaN(d.getTime())) return d.toLocaleDateString('pt-BR');
+      }
+      return str;
+    }
+
+    function parseCurrency(val) {
+      if (typeof val === 'number') return val;
+      if (!val) return 0;
+      let cleaned = String(val).replace(/R\$\s?/g, '').replace(/\./g, '').replace(',', '.').trim();
+      return parseFloat(cleaned) || 0;
+    }
+
+    function toggleFiltersPanel() {
+      const panel = document.getElementById('collapsibleFilters');
+      const label = document.getElementById('btnToggleFilterText');
+      panel.classList.toggle('collapsed');
+      label.textContent = panel.classList.contains('collapsed') ? 'Exibir Filtros' : 'Ocultar Filtros';
+    }
+
+    function populateColumnDropdowns() {
+      const getUnique = key => [...new Set(state.nes.map(item => item[key]))].sort();
+      
+      const populate = (selector, key) => {
+        const select = document.querySelector(selector);
+        if (!select) return;
+        const currentVal = select.value;
+        select.innerHTML = '<option value="">Todos</option>';
+        getUnique(key).forEach(val => {
+          if (val) select.innerHTML += `<option value="${val}">${val}</option>`;
+        });
+        select.value = currentVal;
+      };
+
+      populate('select[onchange*="\'ano\'"]', 'ano');
+      populate('select[onchange*="\'ug\'"]', 'ug');
+      populate('select[onchange*="\'categoria\'"]', 'categoria');
+      populate('select[onchange*="\'tipo\'"]', 'tipo');
+      populate('select[onchange*="\'situacao\'"]', 'situacao');
+      populate('select[onchange*="\'fase\'"]', 'fase');
+    }
+
+    function applyColumnFilter(column, value) {
+      if (value) {
+        state.columnFilters[column] = value.toLowerCase();
+      } else {
+        delete state.columnFilters[column];
+      }
+      applyFilters();
+    }
+
+    function applyFilters() {
+      const search = document.getElementById('searchInput').value.toLowerCase();
+      const ano = document.getElementById('filterAno').value;
+      const cat = document.getElementById('filterCategoria').value;
+      const sit = document.getElementById('filterSituacao').value;
+      const fase = document.getElementById('filterFase').value;
+
+      const filtered = state.nes.filter(item => {
+        const matchesGeneral = item.ne.toString().toLowerCase().includes(search) || 
+                               item.processo.toString().toLowerCase().includes(search) ||
+                               item.descricao.toString().toLowerCase().includes(search) ||
+                               item.uasg.toString().toLowerCase().includes(search);
+        
+        const matchesAno = !ano || item.ano.toString() === ano;
+        const matchesCat = !cat || item.categoria === cat;
+        const matchesSit = !sit || item.situacao === sit;
+        const matchesFase = !fase || item.fase === fase;
+
+        let matchesColumns = true;
+        for (const col in state.columnFilters) {
+          if (item[col] && !item[col].toString().toLowerCase().includes(state.columnFilters[col])) {
+            matchesColumns = false;
+            break;
+          }
+        }
+
+        return matchesGeneral && matchesAno && matchesCat && matchesSit && matchesFase && matchesColumns;
+      });
+
+      renderTable(filtered);
+    }
+
+    function updateDashboard() {
+      const countFase = targetFase => state.nes.filter(n => n.fase === targetFase).length;
+
+      document.getElementById('faseEmpenhado').textContent = countFase('Empenhado');
+      document.getElementById('faseLiquidado').textContent = countFase('Liquidado');
+      document.getElementById('fasePago').textContent = countFase('Pago');
+      document.getElementById('faseEncerrado').textContent = countFase('Encerrado');
+      document.getElementById('faseAnulado').textContent = countFase('Anulado');
+
+      updateGoalsProgress();
+    }
+
+    function renderTable(data) {
+      const tbody = document.getElementById('neTableBody');
+      tbody.innerHTML = '';
+
+      data.forEach(item => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>${item.ano}</td>
+          <td><strong>${item.ne}</strong></td>
+          <td>${item.ug}</td>
+          <td>${item.categoria}</td>
+          <td>${item.tipo}</td>
+          <td>${item.processo}</td>
+          <td>${item.descricao}</td>
+          <td>${item.uasg}</td>
+          <td><span class="badge ${item.situacao === 'Publicado' ? 'badge-publicado' : 'badge-publicar'}">${item.situacao}</span></td>
+          <td>${item.fase}</td>
+          <td>R$ ${item.valor.toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
+          <td>${item.publi}</td>
+          <td>${item.responsavel}</td>
+          <td>${item.atu}</td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    function openModal() {
+      if (!state.currentOperator) {
+        alert('Cadastre ou selecione um operador habilitado antes de registrar uma nova NE.');
+        return;
+      }
+      document.getElementById('modalAno').value = new Date().getFullYear();
+      document.getElementById('modalAtu').valueAsDate = new Date();
+      document.getElementById('modalResponsavel').value = state.currentOperator;
+      document.getElementById('neModal').style.display = 'flex';
+    }
+
+    function closeModal() {
+      document.getElementById('neModal').style.display = 'none';
+      document.getElementById('neForm').reset();
+    }
+
+    function saveNE(e) {
+      e.preventDefault();
+      
+      const payloadNE = {
+        ANO: parseInt(document.getElementById('modalAno').value),
+        NE: document.getElementById('modalNE').value,
+        UG: document.getElementById('modalUG').value,
+        CATEGORIA: document.getElementById('modalCategoria').value,
+        TIPO: document.getElementById('modalTipo').value,
+        PROCESSO: document.getElementById('modalProcesso').value,
+        DESCRICAO: document.getElementById('modalDescricao').value,
+        UASG: document.getElementById('modalUASG').value,
+        SITUACAO: document.getElementById('modalSituacao').value,
+        VALOR: parseFloat(document.getElementById('modalValor').value) || 0,
+        FASE: document.getElementById('modalFase').value,
+        PUBLI: document.getElementById('modalPubli').value,
+        RESPONSAVEL: state.currentOperator,
+        ATU: document.getElementById('modalAtu').value
+      };
+
+      sendNEToSheet('CREATE', payloadNE);
+      closeModal();
+    }
+
+    async function sendNEToSheet(actionType, neData) {
+      if (!state.googleUrl) {
+        alert('Configure a URL do Web App nas Configurações antes de salvar.');
+        return;
+      }
+
+      try {
+        await fetch(state.googleUrl, {
+          method: 'POST',
+          mode: 'no-cors',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: actionType, data: neData })
+        });
+
+        setTimeout(fetchSheetData, 1200);
+      } catch (error) {
+        console.error('Erro ao salvar registro no Google Sheets:', error);
+      }
+    }
+
+    function saveGoogleConfig() {
+      if (!state.isAdminLoggedIn) {
+        alert('Apenas o Administrador pode alterar a URL da API!');
+        return;
+      }
+      const url = document.getElementById('googleScriptUrl').value.trim();
+      state.googleUrl = url;
+      localStorage.setItem('ne_google_url', url);
+      alert('Configuração de API salva com sucesso!');
+      fetchSheetData();
+    }
+
+    function updateSyncStatus(isOnline) {
+      const el = document.getElementById('syncIndicator');
+      if (isOnline) {
+        el.textContent = '● Sincronizado (Google Sheets)';
+        el.className = 'sync-status status-online';
+      } else {
+        el.textContent = '○ Desconectado (Insira a URL na aba Configurações)';
+        el.className = 'sync-status status-offline';
+      }
+    }
+
+    function switchTab(tabId, btn) {
+      document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
+      document.querySelectorAll('nav button').forEach(b => b.classList.remove('active'));
+      document.getElementById(tabId).classList.add('active');
+      btn.classList.add('active');
+    }
+
+    function renderOperators() {
+      const select = document.getElementById('sideOperatorSelect');
+      const list = document.getElementById('operatorList');
+      select.innerHTML = '';
+      list.innerHTML = '';
+
+      if (state.operators.length === 0) {
+        const opt = document.createElement('option');
+        opt.value = '';
+        opt.textContent = '(Nenhum usuário cadastrado)';
+        select.appendChild(opt);
+
+        const li = document.createElement('li');
+        li.style.color = 'var(--text-muted)';
+        li.textContent = 'Nenhum usuário cadastrado até o primeiro uso.';
+        list.appendChild(li);
+        return;
+      }
+
+      state.operators.forEach(op => {
+        const opt = document.createElement('option');
+        opt.value = op;
+        opt.textContent = op;
+        if (op === state.currentOperator) opt.selected = true;
+        select.appendChild(opt);
+
+        const li = document.createElement('li');
+        li.style.padding = '5px 0';
+        li.style.display = 'flex';
+        li.style.justifyContent = 'space-between';
+        li.style.alignItems = 'center';
+
+        const nameSpan = document.createElement('span');
+        nameSpan.textContent = op;
+        li.appendChild(nameSpan);
+
+        if (state.isAdminLoggedIn) {
+          const deleteBtn = document.createElement('button');
+          deleteBtn.className = 'btn btn-danger btn-sm';
+          deleteBtn.textContent = 'Remover';
+          deleteBtn.onclick = () => removeOperator(op);
+          li.appendChild(deleteBtn);
+        }
+
+        list.appendChild(li);
+      });
+    }
+
+    function changeOperator(val) {
+      state.currentOperator = val;
+      localStorage.setItem('ne_current_operator', val);
+    }
+
+    async function addOperator() {
+      if (!state.isAdminLoggedIn) {
+        alert('Apenas o Administrador pode registrar novos usuários!');
+        return;
+      }
+
+      const input = document.getElementById('newOperatorName');
+      const name = input.value.trim();
+      
+      if (!name) return;
+      if (!state.googleUrl) {
+        alert('Configure a URL da API nas Configurações antes de adicionar operadores.');
+        return;
+      }
+
+      try {
+        await fetch(state.googleUrl, {
+          method: 'POST',
+          mode: 'no-cors',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            action: 'ADD_OPERATOR',
+            data: { nome: name }
+          })
+        });
+
+        input.value = '';
+        alert(`Operador "${name}" enviado com sucesso! Sincronizando...`);
+        setTimeout(fetchSheetData, 1200);
+      } catch (error) {
+        console.error('Erro ao adicionar operador:', error);
+      }
+    }
+
+    function removeOperator(opName) {
+      if (!state.isAdminLoggedIn) return;
+      
+      if (confirm(`Deseja remover o operador "${opName}" da visualização local?`)) {
+        state.operators = state.operators.filter(item => item !== opName);
+        if (state.currentOperator === opName) {
+          state.currentOperator = state.operators[0] || '';
+          localStorage.setItem('ne_current_operator', state.currentOperator);
+        }
+        renderOperators();
+      }
+    }
+
+    function initGoalsForm() {
+      document.getElementById('targetNE').value = state.goals.targetNE;
+      document.getElementById('targetDanfe').value = state.goals.targetDanfe;
+    }
+
+    function saveGoals(e) {
+      e.preventDefault();
+      state.goals.targetNE = parseInt(document.getElementById('targetNE').value) || 1;
+      state.goals.targetDanfe = parseInt(document.getElementById('targetDanfe').value) || 1;
+      localStorage.setItem('ne_goals', JSON.stringify(state.goals));
+      updateGoalsProgress();
+      alert('Metas salvas com sucesso!');
+    }
+
+    function updateGoalsProgress() {
+      const publicadasNE = state.nes.filter(n => n.situacao === 'Publicado').length;
+      
+      const percNE = Math.min(100, Math.round((publicadasNE / state.goals.targetNE) * 100));
+      document.getElementById('progressNEText').textContent = `${publicadasNE} / ${state.goals.targetNE} (${percNE}%)`;
+      document.getElementById('progressBarNE').style.width = `${percNE}%`;
+
+      const percDanfe = Math.min(100, Math.round((publicadasNE / state.goals.targetDanfe) * 100));
+      document.getElementById('progressDanfeText').textContent = `${publicadasNE} / ${state.goals.targetDanfe} (${percDanfe}%)`;
+      document.getElementById('progressBarDanfe').style.width = `${percDanfe}%`;
+    }
+  </script>
+</body>
+</html>
