@@ -188,20 +188,17 @@
       <button class="toggle-btn" onclick="toggleSidebar()"><i class="fa-solid fa-bars"></i></button>
     </div>
 
-    <div class="user-card" title="Usuário Ativo">
-      <div class="user-card-icon"><i class="fa-solid fa-user-check"></i></div>
-      <div class="user-card-content">
-        <label class="user-card-label" for="sideOperatorSelect">Usuário Ativo</label>
-        <select id="sideOperatorSelect" onchange="changeOperator(this.value)"></select>
-      </div>
+    <div class="user-card" title="Sessão">
+      <div class="user-card-icon"><i class="fa-solid fa-user-check" id="sessionIcon"></i></div>
+      <div class="user-card-content" id="sessionContent"></div>
     </div>
 
     <nav>
       <ul>
         <li><button class="active" onclick="switchTab('tab-dashboard', this)"><i class="fa-solid fa-chart-pie"></i> <span>Visão Geral</span></button></li>
         <li><button onclick="switchTab('tab-tabela', this)"><i class="fa-solid fa-table-list"></i> <span>Planilha Empenhos</span></button></li>
-        <li><button onclick="switchTab('tab-metas', this)"><i class="fa-solid fa-bullseye"></i> <span>Metas & Desempenho</span></button></li>
-        <li><button onclick="switchTab('tab-config', this)"><i class="fa-solid fa-gear"></i> <span>Configurações</span></button></li>
+        <li id="navMetas"><button onclick="switchTab('tab-metas', this)"><i class="fa-solid fa-bullseye"></i> <span>Metas & Desempenho</span></button></li>
+        <li id="navConfig"><button onclick="switchTab('tab-config', this)"><i class="fa-solid fa-gear"></i> <span>Configurações</span></button></li>
       </ul>
     </nav>
   </aside>
@@ -288,9 +285,9 @@
 
           <input type="text" id="searchInput" placeholder="Pesquisar por NE, Processo, Descrição, UASG, UG..." style="flex: 1; min-width: 240px;" oninput="applyFilters()">
           
-          <button class="btn btn-secondary" onclick="toggleBulkPanelUI()"><i class="fa-solid fa-sliders"></i> Ações / Editar</button>
+          <button id="btnAcoesEditar" class="btn btn-secondary" onclick="toggleBulkPanelUI()"><i class="fa-solid fa-sliders"></i> Ações / Editar</button>
           <button class="btn btn-secondary" onclick="toggleColumnFilters()"><i class="fa-solid fa-filter"></i> Filtros Coluna</button>
-          <button class="btn btn-accent" onclick="openModal()"><i class="fa-solid fa-plus"></i> Nova NE</button>
+          <button id="btnNovaNE" class="btn btn-accent" onclick="openModal()"><i class="fa-solid fa-plus"></i> Nova NE</button>
         </div>
       </div>
 
@@ -421,21 +418,17 @@
     <section id="tab-config" class="tab-content">
       <div class="glass controls-card" style="max-width: 650px; margin-bottom: 20px;">
         <h3 style="display: flex; align-items: center; gap: 8px;"><i class="fa-solid fa-users"></i> USUÁRIOS</h3>
-        <p style="font-size:0.85rem; color:var(--text-muted); margin-bottom:15px; margin-top: 4px;">Gerencie os usuários habilitados no sistema.</p>
-        <div style="display:flex; gap:10px; margin-bottom:15px;">
-          <input type="text" id="newUserNameInput" placeholder="Nome / Posto / Graduação" style="flex:1;">
+        <p style="font-size:0.85rem; color:var(--text-muted); margin-bottom:15px; margin-top: 4px;">Cadastre, edite, remova ou redefina a senha dos usuários do sistema (perfis Administrador e Editor).</p>
+        <div style="display:flex; gap:10px; margin-bottom:15px; flex-wrap: wrap;">
+          <input type="text" id="newUserNameInput" placeholder="Nome / Posto / Graduação" style="flex:1; min-width:160px;">
+          <input type="password" id="newUserPassInput" placeholder="Senha" style="flex:1; min-width:130px;">
+          <select id="newUserProfileInput" style="min-width:150px;">
+            <option value="editor">Editor</option>
+            <option value="admin">Administrador</option>
+          </select>
           <button class="btn btn-accent" onclick="addUser()"><i class="fa-solid fa-user-plus"></i> Adicionar Usuário</button>
         </div>
         <div id="usersContainer"></div>
-      </div>
-
-      <div class="glass controls-card" style="max-width: 650px;">
-        <h3 style="display: flex; align-items: center; gap: 8px;"><i class="fa-solid fa-link"></i> Integração com Google Sheets</h3>
-        <div style="margin-bottom:15px; margin-top: 10px;">
-          <label style="font-size:0.8rem;">URL do Web App (Google Apps Script):</label>
-          <input type="url" id="googleScriptUrl" placeholder="https://script.google.com/macros/s/.../exec" style="width:100%; margin-top: 5px;">
-        </div>
-        <button class="btn btn-accent" onclick="saveGoogleConfig()"><i class="fa-solid fa-floppy-disk"></i> Salvar API Endpoint</button>
       </div>
     </section>
   </main>
@@ -444,7 +437,7 @@
     <div class="modal glass">
       <h3 id="modalTitle" style="margin-bottom: 15px; display: flex; align-items: center; gap: 8px;"><i class="fa-solid fa-file-invoice"></i> Registrar Nova Nota de Empenho</h3>
       <form id="neForm" onsubmit="saveNE(event)">
-        <input type="hidden" id="modalEditIndex" value="-1">
+        <input type="hidden" id="modalEditId" value="">
         <div class="modal-grid">
           <div><label style="font-size: 0.75rem;">ANO</label><input type="number" id="modalAno" required style="width: 100%;"></div>
           <div><label style="font-size: 0.75rem;">Nº NE (6 dígitos)</label><input type="text" id="modalNE" required style="width: 100%;"></div>
@@ -498,7 +491,32 @@
     </div>
   </div>
 
+  <div id="loginModal" class="modal-backdrop">
+    <div class="modal glass" style="max-width: 380px;">
+      <h3 style="margin-bottom: 15px; display: flex; align-items: center; gap: 8px;"><i class="fa-solid fa-right-to-bracket"></i> Entrar no Sistema</h3>
+      <form id="loginForm" onsubmit="doLogin(event)">
+        <div style="margin-bottom: 12px;">
+          <label style="font-size: 0.75rem;">Usuário</label>
+          <input type="text" id="loginNome" required style="width: 100%; margin-top: 4px;">
+        </div>
+        <div style="margin-bottom: 12px;">
+          <label style="font-size: 0.75rem;">Senha</label>
+          <input type="password" id="loginSenha" required style="width: 100%; margin-top: 4px;">
+        </div>
+        <div id="loginError" style="color: var(--badge-publicar-text); font-size: 0.8rem; margin-bottom: 10px; display: none;"></div>
+        <div style="display:flex; justify-content:flex-end; gap:10px;">
+          <button type="button" class="btn btn-secondary" onclick="closeLoginModal()">Cancelar</button>
+          <button type="submit" class="btn btn-accent"><i class="fa-solid fa-check"></i> Entrar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
   <script>
+    // ATENÇÃO: substitua pela URL do seu Web App do Google Apps Script
+    // (Extensões > Apps Script > Implantar > Nova implantação > Aplicativo da Web)
+    const GOOGLE_SCRIPT_URL = "COLE_AQUI_A_URL_DO_SEU_APP_SCRIPT";
+
     const SYNC_INTERVAL_MS = 15000;
     let chartsInstance = {};
 
@@ -520,13 +538,12 @@
 
     const state = {
       theme: localStorage.getItem('ne_theme') || 'dark',
-      googleUrl: localStorage.getItem('ne_google_url') || '',
-      users: JSON.parse(localStorage.getItem('ne_users')) || ['3º Sgt Silva', 'Cb Oliveira', 'Sd Santos'],
-      currentUser: localStorage.getItem('ne_current_user') || '3º Sgt Silva',
+      session: JSON.parse(localStorage.getItem('ne_session')) || null, // {id, nome, perfil} ou null = Público
+      users: [], // carregado do servidor: [{id, nome, perfil}]
       danfeStock: parseInt(localStorage.getItem('ne_danfe_stock')) || 0,
       danfeLogs: JSON.parse(localStorage.getItem('ne_danfe_logs')) || [],
       columnFilters: {},
-      selectedNEs: new Set(),
+      selectedIds: new Set(),
       currentPage: 1,
       pageSize: 15,
       sortKey: '',
@@ -538,17 +555,13 @@
 
     document.addEventListener('DOMContentLoaded', () => {
       applyTheme(state.theme);
-      document.getElementById('googleScriptUrl').value = state.googleUrl;
       document.getElementById('danfeStockInput').value = state.danfeStock;
-      renderUsers();
+      renderSessionUI();
+      applyPermissions();
       renderDanfeMetrics();
 
-      if (state.googleUrl) {
-        fetchSheetData();
-        setInterval(fetchSheetData, SYNC_INTERVAL_MS);
-      } else {
-        updateSyncStatus(false);
-      }
+      fetchSheetData();
+      setInterval(fetchSheetData, SYNC_INTERVAL_MS);
     });
 
     function toggleTheme() {
@@ -575,19 +588,39 @@
       document.getElementById('sidebar').classList.toggle('collapsed');
     }
 
+    /**
+     * Chamada POST padrão ao Web App. Usa Content-Type "text/plain" de propósito:
+     * evita o preflight CORS (OPTIONS) que o Apps Script não responde, permitindo
+     * ler o corpo da resposta normalmente (diferente do antigo modo "no-cors",
+     * que escondia qualquer erro vindo do servidor).
+     */
+    async function postToSheet(action, data) {
+      const response = await fetch(GOOGLE_SCRIPT_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify({ action, data })
+      });
+      return await response.json();
+    }
+
     async function fetchSheetData() {
-      if (!state.googleUrl) return;
+      if (!GOOGLE_SCRIPT_URL || GOOGLE_SCRIPT_URL.indexOf('COLE_AQUI') !== -1) {
+        updateSyncStatus(false);
+        return;
+      }
 
       try {
-        const response = await fetch(state.googleUrl);
+        const response = await fetch(GOOGLE_SCRIPT_URL);
         if (!response.ok) throw new Error('HTTP Error');
         const data = await response.json();
+        if (data.status !== 'success') throw new Error(data.message || 'Erro no servidor');
 
-        state.nes = data.map(row => {
+        state.nes = data.nes.map(row => {
           const norm = {};
           Object.keys(row).forEach(k => norm[k.trim().toUpperCase()] = row[k]);
 
           return {
+            id: norm['ID'] ? String(norm['ID']) : '',
             ano: norm['ANO'] || new Date().getFullYear(),
             ne: norm['NE'] ? String(norm['NE']) : 'Não Informado',
             ug: norm['UG'] ? String(norm['UG']) : 'Não Informado',
@@ -605,12 +638,15 @@
           };
         });
 
+        state.users = data.users || [];
+
         updateSyncStatus(true);
         populateColumnDropdowns();
         populateUGSelect();
         applyFilters();
         updateDashboard();
         renderCharts();
+        renderUsersAdminPanel();
       } catch (err) {
         console.error(err);
         updateSyncStatus(false);
@@ -696,10 +732,11 @@
     }
 
     function toggleBulkPanelUI() {
+      if (!isEditorOrAdmin()) return;
       state.showBulkPanel = !state.showBulkPanel;
       document.querySelectorAll('.bulk-col').forEach(el => el.style.display = state.showBulkPanel ? 'table-cell' : 'none');
       if (!state.showBulkPanel) {
-        state.selectedNEs.clear();
+        state.selectedIds.clear();
         document.getElementById('bulkPanel').style.display = 'none';
       }
     }
@@ -838,12 +875,11 @@
       const pageData = data.slice(start, end);
 
       pageData.forEach((item) => {
-        const realIndex = state.nes.indexOf(item);
-        const isChecked = state.selectedNEs.has(item.ne);
+        const isChecked = state.selectedIds.has(item.id);
         const tr = document.createElement('tr');
         tr.innerHTML = `
-          <td class="bulk-col" style="${state.showBulkPanel ? '' : 'display:none;'}"><input type="checkbox" ${isChecked ? 'checked' : ''} onchange="toggleSelectNE('${item.ne}', this.checked)"></td>
-          <td class="bulk-col" style="${state.showBulkPanel ? '' : 'display:none;'}"><button class="btn btn-secondary" style="font-size:0.75rem; padding:3px 8px;" onclick="openEditModal(${realIndex})"><i class="fa-solid fa-pen"></i></button></td>
+          <td class="bulk-col" style="${state.showBulkPanel ? '' : 'display:none;'}"><input type="checkbox" ${isChecked ? 'checked' : ''} onchange="toggleSelectRow('${item.id}', this.checked)"></td>
+          <td class="bulk-col" style="${state.showBulkPanel ? '' : 'display:none;'}"><button class="btn btn-secondary" style="font-size:0.75rem; padding:3px 8px;" onclick="openEditModal('${item.id}')"><i class="fa-solid fa-pen"></i></button></td>
           <td><strong>${item.ne}</strong></td>
           <td>${item.ug}</td>
           <td>${item.categoria}</td>
@@ -891,17 +927,17 @@
       }
     }
 
-    function toggleSelectNE(neNum, isSelected) {
-      if (isSelected) state.selectedNEs.add(neNum);
-      else state.selectedNEs.delete(neNum);
+    function toggleSelectRow(id, isSelected) {
+      if (isSelected) state.selectedIds.add(id);
+      else state.selectedIds.delete(id);
       updateBulkPanel();
     }
 
     function toggleSelectAll(isChecked) {
       if (isChecked) {
-        state.nes.forEach(n => state.selectedNEs.add(n.ne));
+        state.nes.forEach(n => state.selectedIds.add(n.id));
       } else {
-        state.selectedNEs.clear();
+        state.selectedIds.clear();
       }
       applyFilters();
       updateBulkPanel();
@@ -909,42 +945,45 @@
 
     function updateBulkPanel() {
       const panel = document.getElementById('bulkPanel');
-      const count = state.selectedNEs.size;
+      const count = state.selectedIds.size;
       document.getElementById('selectedCount').textContent = count;
       panel.style.display = count > 0 && state.showBulkPanel ? 'flex' : 'none';
     }
 
     async function applyBulkUpdate() {
+      if (!isEditorOrAdmin()) return;
       const newFase = document.getElementById('bulkFase').value;
       const newSit = document.getElementById('bulkSituacao').value;
 
       if (!newFase && !newSit) return alert('Selecione Fase ou Situação.');
 
-      const targets = Array.from(state.selectedNEs);
-      for (const neNum of targets) {
-        const item = state.nes.find(n => n.ne === neNum);
+      const targets = Array.from(state.selectedIds);
+      for (const id of targets) {
+        const item = state.nes.find(n => n.id === id);
         if (item) {
           if (newFase) item.fase = newFase;
           if (newSit) item.situacao = newSit;
-          item.responsavel = state.currentUser;
+          item.responsavel = state.session.nome;
           item.atu = new Date().toLocaleDateString('pt-BR');
 
           await sendNEToSheet('UPDATE', {
-            ANO: item.ano, NE: item.ne, UG: item.ug, CATEGORIA: item.categoria,
+            ID: item.id, ANO: item.ano, NE: item.ne, UG: item.ug, CATEGORIA: item.categoria,
             TIPO: item.tipo, PROCESSO: item.processo, DESCRICAO: item.descricao,
             UASG: item.uasg, SITUACAO: item.situacao, FASE: item.fase,
-            VALOR: item.valor, PUBLI: item.publi, RESPONSAVEL: item.responsavel, ATU: item.atu
+            VALOR: item.valor, PUBLI: item.publi, RESPONSAVEL: item.responsavel, ATU: item.atu,
+            REQUESTER_ID: state.session.id
           });
         }
       }
 
-      state.selectedNEs.clear();
+      state.selectedIds.clear();
       updateBulkPanel();
       alert('Ações concluídas!');
       fetchSheetData();
     }
 
     function saveDanfeStock() {
+      if (!isEditorOrAdmin()) return;
       const val = parseInt(document.getElementById('danfeStockInput').value) || 0;
       state.danfeStock = val;
       localStorage.setItem('ne_danfe_stock', val);
@@ -954,12 +993,13 @@
 
     function logDanfeProduction(e) {
       e.preventDefault();
+      if (!isEditorOrAdmin()) return;
       const qty = parseInt(document.getElementById('danfeQtyLog').value) || 0;
       if (qty <= 0) return;
 
       const log = {
         data: new Date().toLocaleDateString('pt-BR'),
-        usuario: state.currentUser,
+        usuario: state.session.nome,
         quantidade: qty
       };
 
@@ -1015,21 +1055,23 @@
     }
 
     function openModal() {
+      if (!isEditorOrAdmin()) return;
       document.getElementById('modalTitle').innerHTML = '<i class="fa-solid fa-file-invoice me-2"></i> Registrar Nova Nota de Empenho';
-      document.getElementById('modalEditIndex').value = '-1';
+      document.getElementById('modalEditId').value = '';
       document.getElementById('neForm').reset();
       document.getElementById('modalAno').value = new Date().getFullYear();
       document.getElementById('modalAtu').valueAsDate = new Date();
-      document.getElementById('modalResponsavel').value = state.currentUser;
+      document.getElementById('modalResponsavel').value = state.session.nome;
       document.getElementById('neModal').style.display = 'flex';
     }
 
-    function openEditModal(index) {
-      const item = state.nes[index];
+    function openEditModal(id) {
+      if (!isEditorOrAdmin()) return;
+      const item = state.nes.find(n => n.id === id);
       if (!item) return;
 
       document.getElementById('modalTitle').innerHTML = `<i class="fa-solid fa-pen-to-square me-2"></i> Editar NE: ${item.ne}`;
-      document.getElementById('modalEditIndex').value = index;
+      document.getElementById('modalEditId').value = item.id;
       document.getElementById('modalAno').value = item.ano;
       document.getElementById('modalNE').value = item.ne;
       document.getElementById('modalUGSelect').value = item.ug;
@@ -1041,7 +1083,7 @@
       document.getElementById('modalSituacao').value = item.situacao;
       document.getElementById('modalFase').value = item.fase;
       document.getElementById('modalValor').value = item.valor;
-      document.getElementById('modalResponsavel').value = state.currentUser;
+      document.getElementById('modalResponsavel').value = state.session.nome;
 
       document.getElementById('neModal').style.display = 'flex';
     }
@@ -1050,12 +1092,15 @@
       document.getElementById('neModal').style.display = 'none';
     }
 
-    function saveNE(e) {
+    async function saveNE(e) {
       e.preventDefault();
-      const idx = parseInt(document.getElementById('modalEditIndex').value);
-      const actionType = idx === -1 ? 'CREATE' : 'UPDATE';
+      if (!isEditorOrAdmin()) return;
+
+      const editId = document.getElementById('modalEditId').value;
+      const actionType = editId ? 'UPDATE' : 'CREATE';
 
       const payloadNE = {
+        ID: editId || undefined,
         ANO: parseInt(document.getElementById('modalAno').value),
         NE: document.getElementById('modalNE').value,
         UG: document.getElementById('modalUGSelect').value,
@@ -1068,92 +1113,236 @@
         VALOR: parseFloat(document.getElementById('modalValor').value) || 0,
         FASE: document.getElementById('modalFase').value,
         PUBLI: document.getElementById('modalPubli').value,
-        RESPONSAVEL: state.currentUser,
-        ATU: document.getElementById('modalAtu').value
+        RESPONSAVEL: state.session.nome,
+        ATU: document.getElementById('modalAtu').value,
+        REQUESTER_ID: state.session.id
       };
 
-      sendNEToSheet(actionType, payloadNE);
-      closeModal();
+      const ok = await sendNEToSheet(actionType, payloadNE);
+      if (ok) {
+        closeModal();
+        setTimeout(fetchSheetData, 800);
+      }
     }
 
+    /**
+     * Grava uma NE (CREATE/UPDATE) e retorna true/false conforme o resultado
+     * real devolvido pelo servidor (agora legível, sem "no-cors").
+     */
     async function sendNEToSheet(actionType, neData) {
-      if (!state.googleUrl) return alert('URL da API não configurada.');
       try {
-        await fetch(state.googleUrl, {
-          method: 'POST',
-          mode: 'no-cors',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ action: actionType, data: neData })
-        });
-        setTimeout(fetchSheetData, 1200);
-      } catch (err) { console.error(err); }
+        const result = await postToSheet(actionType, neData);
+        if (result.status !== 'success') {
+          alert('Erro ao salvar: ' + (result.message || 'Falha desconhecida.'));
+          return false;
+        }
+        return true;
+      } catch (err) {
+        console.error(err);
+        alert('Erro de conexão ao gravar dados.');
+        return false;
+      }
     }
 
-    function renderUsers() {
-      const select = document.getElementById('sideOperatorSelect');
+    /* ==========================================================
+     * SESSÃO / LOGIN / PERFIS DE ACESSO
+     * (perfis: 'admin', 'editor'; sem sessão = Público)
+     * ========================================================== */
+
+    function isAdmin() {
+      return !!state.session && state.session.perfil === 'admin';
+    }
+
+    function isEditorOrAdmin() {
+      return !!state.session && (state.session.perfil === 'admin' || state.session.perfil === 'editor');
+    }
+
+    function renderSessionUI() {
+      const icon = document.getElementById('sessionIcon');
+      const content = document.getElementById('sessionContent');
+
+      if (state.session) {
+        const perfilLabel = state.session.perfil === 'admin' ? 'Administrador' : 'Editor';
+        icon.className = 'fa-solid fa-user-shield';
+        content.innerHTML = `
+          <label class="user-card-label">${perfilLabel}</label>
+          <div style="font-size:0.85rem; font-weight:600; margin: 2px 0 8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${state.session.nome}</div>
+          <button class="btn btn-secondary" style="width:100%; font-size:0.75rem; padding:6px;" onclick="doLogout()"><i class="fa-solid fa-right-from-bracket"></i> Sair</button>
+        `;
+      } else {
+        icon.className = 'fa-solid fa-user';
+        content.innerHTML = `
+          <label class="user-card-label">Público</label>
+          <button class="btn btn-accent" style="width:100%; font-size:0.75rem; padding:6px; margin-top:6px;" onclick="openLoginModal()"><i class="fa-solid fa-right-to-bracket"></i> Entrar</button>
+        `;
+      }
+    }
+
+    function openLoginModal() {
+      document.getElementById('loginError').style.display = 'none';
+      document.getElementById('loginForm').reset();
+      document.getElementById('loginModal').style.display = 'flex';
+    }
+
+    function closeLoginModal() {
+      document.getElementById('loginModal').style.display = 'none';
+    }
+
+    async function doLogin(e) {
+      e.preventDefault();
+      const nome = document.getElementById('loginNome').value.trim();
+      const senha = document.getElementById('loginSenha').value;
+      const errEl = document.getElementById('loginError');
+      errEl.style.display = 'none';
+
+      try {
+        const result = await postToSheet('LOGIN', { nome, senha });
+        if (result.status === 'success') {
+          state.session = result.user;
+          localStorage.setItem('ne_session', JSON.stringify(state.session));
+          closeLoginModal();
+          renderSessionUI();
+          applyPermissions();
+          fetchSheetData();
+        } else {
+          errEl.textContent = result.message || 'Usuário ou senha inválidos.';
+          errEl.style.display = 'block';
+        }
+      } catch (err) {
+        console.error(err);
+        errEl.textContent = 'Erro de conexão. Verifique a URL do Apps Script.';
+        errEl.style.display = 'block';
+      }
+    }
+
+    function doLogout() {
+      state.session = null;
+      localStorage.removeItem('ne_session');
+      renderSessionUI();
+      applyPermissions();
+    }
+
+    /**
+     * Mostra/oculta abas e botões conforme o perfil ativo:
+     * Público → só visualiza e filtra; Editor → também cadastra NE e usa Metas;
+     * Admin → tudo, incluindo a aba Configurações (gestão de usuários).
+     */
+    function applyPermissions() {
+      const editorOuAdmin = isEditorOrAdmin();
+      const admin = isAdmin();
+
+      document.getElementById('navMetas').style.display = editorOuAdmin ? '' : 'none';
+      document.getElementById('navConfig').style.display = admin ? '' : 'none';
+      document.getElementById('btnNovaNE').style.display = editorOuAdmin ? '' : 'none';
+      document.getElementById('btnAcoesEditar').style.display = editorOuAdmin ? '' : 'none';
+
+      if (!editorOuAdmin) {
+        state.showBulkPanel = false;
+        document.querySelectorAll('.bulk-col').forEach(el => el.style.display = 'none');
+        document.getElementById('bulkPanel').style.display = 'none';
+      }
+
+      const activeTab = document.querySelector('.tab-content.active');
+      if (activeTab) {
+        const perdeuAcessoMetas = activeTab.id === 'tab-metas' && !editorOuAdmin;
+        const perdeuAcessoConfig = activeTab.id === 'tab-config' && !admin;
+        if (perdeuAcessoMetas || perdeuAcessoConfig) {
+          switchTab('tab-dashboard', document.querySelector('nav button'));
+        }
+      }
+    }
+
+    /* ---------- Painel de administração de usuários (aba Configurações) ---------- */
+
+    function renderUsersAdminPanel() {
       const container = document.getElementById('usersContainer');
-      select.innerHTML = '';
+      if (!container) return;
       container.innerHTML = '';
 
-      state.users.forEach((user, i) => {
-        select.innerHTML += `<option value="${user}" ${user === state.currentUser ? 'selected' : ''}>${user}</option>`;
+      state.users.forEach(user => {
+        const perfilLabel = user.perfil === 'admin' ? 'Administrador' : 'Editor';
         container.innerHTML += `
           <div class="user-item">
             <div class="user-item-info">
               <i class="fa-solid fa-user-gear text-muted" style="font-size: 1.1rem;"></i>
-              <strong>${user}</strong>
+              <div>
+                <strong>${user.nome}</strong>
+                <div style="font-size:0.75rem; color:var(--text-muted);">${perfilLabel}</div>
+              </div>
             </div>
             <div style="display: flex; gap: 8px;">
-              <button class="btn btn-secondary" style="font-size:0.75rem; padding: 6px 12px;" onclick="editUser(${i})"><i class="fa-solid fa-pen"></i> Editar</button>
-              ${state.users.length > 1 ? `<button class="btn btn-secondary" style="font-size:0.75rem; padding: 6px 12px; color:var(--badge-publicar-text);" onclick="removeUser(${i})"><i class="fa-solid fa-trash"></i></button>` : ''}
+              <button class="btn btn-secondary" style="font-size:0.75rem; padding: 6px 12px;" onclick="editUser('${user.id}')" title="Editar"><i class="fa-solid fa-pen"></i></button>
+              <button class="btn btn-secondary" style="font-size:0.75rem; padding: 6px 12px;" onclick="resetUserPassword('${user.id}')" title="Redefinir senha"><i class="fa-solid fa-key"></i></button>
+              <button class="btn btn-secondary" style="font-size:0.75rem; padding: 6px 12px; color:var(--badge-publicar-text);" onclick="removeUser('${user.id}')" title="Remover"><i class="fa-solid fa-trash"></i></button>
             </div>
           </div>
         `;
       });
     }
 
-    function changeOperator(val) {
-      state.currentUser = val;
-      localStorage.setItem('ne_current_user', val);
-    }
+    async function addUser() {
+      if (!isAdmin()) return;
+      const nome = document.getElementById('newUserNameInput').value.trim();
+      const senha = document.getElementById('newUserPassInput').value;
+      const perfil = document.getElementById('newUserProfileInput').value;
 
-    function addUser() {
-      const input = document.getElementById('newUserNameInput');
-      const name = input.value.trim();
-      if (name && !state.users.includes(name)) {
-        state.users.push(name);
-        localStorage.setItem('ne_users', JSON.stringify(state.users));
-        input.value = '';
-        renderUsers();
+      if (!nome || !senha) return alert('Preencha nome e senha.');
+
+      const result = await postToSheet('ADD_USER', { nome, senha, perfil, requesterId: state.session.id });
+      if (result.status === 'success') {
+        document.getElementById('newUserNameInput').value = '';
+        document.getElementById('newUserPassInput').value = '';
+        setTimeout(fetchSheetData, 500);
+      } else {
+        alert('Erro: ' + result.message);
       }
     }
 
-    function editUser(index) {
-      const oldName = state.users[index];
-      const newName = prompt('Editar nome do usuário:', oldName);
-      if (newName && newName.trim() !== '') {
-        state.users[index] = newName.trim();
-        if (state.currentUser === oldName) changeOperator(newName.trim());
-        localStorage.setItem('ne_users', JSON.stringify(state.users));
-        renderUsers();
+    async function editUser(id) {
+      if (!isAdmin()) return;
+      const user = state.users.find(u => u.id === id);
+      if (!user) return;
+
+      const newName = prompt('Nome do usuário:', user.nome);
+      if (newName === null) return;
+      const newProfile = prompt('Perfil ("admin" ou "editor"):', user.perfil);
+      if (newProfile === null) return;
+      if (!['admin', 'editor'].includes(newProfile)) return alert('Perfil inválido. Use "admin" ou "editor".');
+
+      const result = await postToSheet('UPDATE_USER', { id, nome: newName.trim(), perfil: newProfile, requesterId: state.session.id });
+      if (result.status === 'success') {
+        setTimeout(fetchSheetData, 500);
+      } else {
+        alert('Erro: ' + result.message);
       }
     }
 
-    function removeUser(index) {
-      if (confirm(`Remover usuário "${state.users[index]}"?`)) {
-        const removed = state.users.splice(index, 1)[0];
-        if (state.currentUser === removed) changeOperator(state.users[0] || '');
-        localStorage.setItem('ne_users', JSON.stringify(state.users));
-        renderUsers();
+    async function resetUserPassword(id) {
+      if (!isAdmin()) return;
+      const novaSenha = prompt('Digite a nova senha para este usuário:');
+      if (!novaSenha) return;
+
+      const result = await postToSheet('UPDATE_PASSWORD', { id, novaSenha, requesterId: state.session.id });
+      if (result.status === 'success') {
+        alert('Senha redefinida com sucesso!');
+      } else {
+        alert('Erro: ' + result.message);
       }
     }
 
-    function saveGoogleConfig() {
-      const url = document.getElementById('googleScriptUrl').value.trim();
-      state.googleUrl = url;
-      localStorage.setItem('ne_google_url', url);
-      alert('API configurada!');
-      fetchSheetData();
+    async function removeUser(id) {
+      if (!isAdmin()) return;
+      const user = state.users.find(u => u.id === id);
+      if (!user) return;
+      if (!confirm(`Remover usuário "${user.nome}"?`)) return;
+
+      const result = await postToSheet('REMOVE_USER', { id, requesterId: state.session.id });
+      if (result.status === 'success') {
+        if (state.session && state.session.id === id) doLogout();
+        setTimeout(fetchSheetData, 500);
+      } else {
+        alert('Erro: ' + result.message);
+      }
     }
 
     function updateSyncStatus(isOnline) {
