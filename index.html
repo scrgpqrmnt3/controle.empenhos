@@ -515,7 +515,7 @@
   <script>
     // ATENÇÃO: substitua pela URL do seu Web App do Google Apps Script
     // (Extensões > Apps Script > Implantar > Nova implantação > Aplicativo da Web)
-    const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxInpj39VRKchlIVv0WlehNoR2BuFAgaSJap5mWoNG52krOtvO7WxF2Asnw80WH5PE8/exec";
+    const GOOGLE_SCRIPT_URL = "COLE_AQUI_A_URL_DO_SEU_APP_SCRIPT";
 
     const SYNC_INTERVAL_MS = 15000;
     let chartsInstance = {};
@@ -958,28 +958,37 @@
       if (!newFase && !newSit) return alert('Selecione Fase ou Situação.');
 
       const targets = Array.from(state.selectedIds);
-      for (const id of targets) {
-        const item = state.nes.find(n => n.id === id);
-        if (item) {
-          if (newFase) item.fase = newFase;
-          if (newSit) item.situacao = newSit;
-          item.responsavel = state.session.nome;
-          item.atu = new Date().toLocaleDateString('pt-BR');
+      const requests = [];
 
-          await sendNEToSheet('UPDATE', {
-            ID: item.id, ANO: item.ano, NE: item.ne, UG: item.ug, CATEGORIA: item.categoria,
-            TIPO: item.tipo, PROCESSO: item.processo, DESCRICAO: item.descricao,
-            UASG: item.uasg, SITUACAO: item.situacao, FASE: item.fase,
-            VALOR: item.valor, PUBLI: item.publi, RESPONSAVEL: item.responsavel, ATU: item.atu,
-            REQUESTER_ID: state.session.id
-          });
-        }
-      }
+      targets.forEach(id => {
+        const item = state.nes.find(n => n.id === id);
+        if (!item) return;
+
+        if (newFase) item.fase = newFase;
+        if (newSit) item.situacao = newSit;
+        item.responsavel = state.session.nome;
+        item.atu = new Date().toLocaleDateString('pt-BR');
+
+        requests.push(sendNEToSheet('UPDATE', {
+          ID: item.id, ANO: item.ano, NE: item.ne, UG: item.ug, CATEGORIA: item.categoria,
+          TIPO: item.tipo, PROCESSO: item.processo, DESCRICAO: item.descricao,
+          UASG: item.uasg, SITUACAO: item.situacao, FASE: item.fase,
+          VALOR: item.valor, PUBLI: item.publi, RESPONSAVEL: item.responsavel, ATU: item.atu,
+          REQUESTER_ID: state.session.id
+        }));
+      });
+
+      // Envia todas as atualizações do lote em paralelo, em vez de uma
+      // por vez, o que reduz bastante o tempo total quando várias NEs
+      // são selecionadas.
+      await Promise.all(requests);
 
       state.selectedIds.clear();
       updateBulkPanel();
+      applyFilters();
+      updateDashboard();
+      renderCharts();
       alert('Ações concluídas!');
-      fetchSheetData();
     }
 
     function saveDanfeStock() {
@@ -1118,29 +1127,70 @@
         REQUESTER_ID: state.session.id
       };
 
-      const ok = await sendNEToSheet(actionType, payloadNE);
-      if (ok) {
-        closeModal();
-        setTimeout(fetchSheetData, 800);
+      const submitBtn = document.querySelector('#neForm button[type="submit"]');
+      submitBtn.disabled = true;
+      submitBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Salvando...';
+
+      const result = await sendNEToSheet(actionType, payloadNE);
+
+      submitBtn.disabled = false;
+      submitBtn.innerHTML = '<i class="fa-solid fa-check"></i> Salvar Registros';
+
+      if (!result) return;
+
+      // Atualização otimista: reflete o registro na tela imediatamente
+      // (sem esperar uma nova leitura completa da planilha), já que o
+      // servidor confirmou o sucesso da gravação. A sincronização
+      // periódica (a cada 15s) mantém tudo alinhado com outros dispositivos.
+      const itemLocal = {
+        id: editId || result.id,
+        ano: payloadNE.ANO,
+        ne: payloadNE.NE,
+        ug: payloadNE.UG,
+        categoria: payloadNE.CATEGORIA,
+        tipo: payloadNE.TIPO,
+        processo: formatProcessoText(payloadNE.PROCESSO),
+        descricao: payloadNE.DESCRICAO,
+        uasg: payloadNE.UASG,
+        situacao: payloadNE.SITUACAO,
+        fase: payloadNE.FASE,
+        valor: payloadNE.VALOR,
+        publi: formatDate(payloadNE.PUBLI),
+        responsavel: payloadNE.RESPONSAVEL,
+        atu: formatDate(payloadNE.ATU)
+      };
+
+      if (actionType === 'UPDATE') {
+        const idx = state.nes.findIndex(n => n.id === editId);
+        if (idx !== -1) state.nes[idx] = itemLocal;
+      } else {
+        state.nes.push(itemLocal);
       }
+
+      closeModal();
+      populateColumnDropdowns();
+      populateUGSelect();
+      applyFilters();
+      updateDashboard();
+      renderCharts();
     }
 
     /**
-     * Grava uma NE (CREATE/UPDATE) e retorna true/false conforme o resultado
-     * real devolvido pelo servidor (agora legível, sem "no-cors").
+     * Grava uma NE (CREATE/UPDATE) e retorna o resultado do servidor
+     * (com "id" no caso de CREATE) ou null em caso de erro.
      */
     async function sendNEToSheet(actionType, neData) {
       try {
         const result = await postToSheet(actionType, neData);
         if (result.status !== 'success') {
           alert('Erro ao salvar: ' + (result.message || 'Falha desconhecida.'));
-          return false;
+          return null;
         }
-        return true;
+        return result;
       } catch (err) {
         console.error(err);
         alert('Erro de conexão ao gravar dados.');
-        return false;
+        return null;
       }
     }
 
