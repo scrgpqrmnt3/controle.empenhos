@@ -11,6 +11,8 @@
   <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css" rel="stylesheet">
   
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <!-- Supabase SDK -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
   <style>
     :root[data-theme="dark"] {
@@ -515,7 +517,11 @@
   <script>
     // ATENÇÃO: substitua pela URL do seu Web App do Google Apps Script
     // (Extensões > Apps Script > Implantar > Nova implantação > Aplicativo da Web)
-    const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxInpj39VRKchlIVv0WlehNoR2BuFAgaSJap5mWoNG52krOtvO7WxF2Asnw80WH5PE8/exec";
+    // const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxInpj39VRKchlIVv0WlehNoR2BuFAgaSJap5mWoNG52krOtvO7WxF2Asnw80WH5PE8/exec";
+
+    const SUPABASE_URL = "https://qjvrywvtqrgbkqmsolbc.supabase.co/rest/v1/";
+    const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFqdnJ5d3Z0cXJnYmtxbXNvbGJjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODgzODQzNjQsImV4cCI6MjEwMzk2MDM2NH0.0Nc9Gz6TRMlM9yX8M7bd63E45114JsaiDRTE9iFxbyk";
+    const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
     const SYNC_INTERVAL_MS = 15000;
     let chartsInstance = {};
@@ -553,15 +559,11 @@
       nes: []
     };
 
-    document.addEventListener('DOMContentLoaded', () => {
-      applyTheme(state.theme);
-      document.getElementById('danfeStockInput').value = state.danfeStock;
-      renderSessionUI();
-      applyPermissions();
-      renderDanfeMetrics();
-
-      fetchSheetData();
-      setInterval(fetchSheetData, SYNC_INTERVAL_MS);
+    document.addEventListener("DOMContentLoaded", () => {
+      // Checa a sessão no Supabase primeiro
+      checkSession();
+  
+      // A busca inicial de dados (fetchSheetData) será ativada na Etapa 3.B
     });
 
     function toggleTheme() {
@@ -1272,6 +1274,30 @@
       applyPermissions();
     }
 
+    async function checkSession() {
+      try {
+        // 1. Pergunta ao servidor Supabase se o token salvo no navegador ainda é válido
+        const { data: { session }, error } = await supabase.auth.getSession();
+    
+        if (session && !error) {
+          // 2. Se for válido, recarrega os dados do perfil armazenados localmente
+        const savedUser = localStorage.getItem('empenhos_user');
+          if (savedUser) {
+            state.currentUser = JSON.parse(savedUser);
+          }
+        } else {
+          // 3. Se expirou ou não existe, limpa o estado
+          state.currentUser = null;
+          localStorage.removeItem('empenhos_user');
+        }
+      } catch (err) {
+        console.error("Erro ao checar sessão:", err);
+        state.currentUser = null;
+      }
+      // 4. Atualiza os botões e painéis da tela de acordo com o perfil
+      applyPermissions();
+    }
+      
     /**
      * Mostra/oculta abas e botões conforme o perfil ativo:
      * Público → só visualiza e filtra; Editor → também cadastra NE e usa Metas;
