@@ -143,7 +143,48 @@
     .chart-container h4 { font-size: 0.85rem; font-weight: 600; margin-bottom: 12px; color: var(--text-muted); display: flex; align-items: center; gap: 8px; }
     .chart-wrapper { flex: 1; position: relative; width: 100%; height: 100%; min-height: 0; }
 
-    .controls-card { padding: 16px; margin-bottom: 20px; }
+    .controls-card { 
+      padding: 16px; 
+      margin-bottom: 20px; 
+      position: sticky; 
+      top: 0; 
+      z-index: 20; 
+      background: var(--bg-main); 
+    }
+
+    .table-container { 
+      overflow-x: auto; 
+      margin-bottom: 15px; 
+      max-height: calc(100vh - 250px); 
+      overflow-y: auto; 
+    }
+
+    table thead th { 
+      position: sticky; 
+      top: 0; 
+      z-index: 10; 
+      background: #090d16; 
+      box-shadow: 0 1px 0 var(--border-color); 
+    }
+
+    .col-toggle-panel {
+      display: none;
+      flex-wrap: wrap;
+      gap: 10px;
+      padding: 12px;
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      margin-bottom: 15px;
+      font-size: 0.8rem;
+    }
+
+    .col-toggle-item {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      cursor: pointer;
+    }
 
     input, select, button.btn { padding: 9px 14px; border: 1px solid var(--border-color); border-radius: 8px; font-size: 0.85rem; background: var(--bg-card); color: var(--text-main); }
     input:focus, select:focus { outline: 2px solid var(--accent); }
@@ -285,9 +326,12 @@
           
           <button id="btnAcoesEditar" class="btn btn-secondary" onclick="toggleBulkPanelUI()"><i class="fa-solid fa-sliders"></i> Ações / Editar</button>
           <button class="btn btn-secondary" onclick="toggleColumnFilters()"><i class="fa-solid fa-filter"></i> Filtros Coluna</button>
+          <button class="btn btn-secondary" onclick="toggleColumnVisibilityPanel()"><i class="fa-solid fa-eye"></i> Colunas</button>
           <button id="btnNovaNE" class="btn btn-accent" onclick="openModal()"><i class="fa-solid fa-plus"></i> Nova NE</button>
         </div>
       </div>
+
+      <div id="colTogglePanel" class="col-toggle-panel"></div>
 
       <div id="bulkPanel" class="bulk-panel">
         <div><strong><span id="selectedCount">0</span> registro(s) selecionado(s)</strong></div>
@@ -309,6 +353,7 @@
             <option value="Arquivar">Arquivar</option>
           </select>
           <button class="btn btn-accent" onclick="applyBulkUpdate()">Aplicar Alterações</button>
+          <button class="btn btn-secondary" style="color: #f87171; border-color: rgba(239, 68, 68, 0.4);" onclick="deleteSelectedNEs()"><i class="fa-solid fa-trash"></i> Excluir</button>
         </div>
       </div>
 
@@ -336,37 +381,38 @@
           <table>
             <thead>
               <tr>
-                <th class="bulk-col" style="display:none;"><input type="checkbox" id="selectAllCheckbox" onchange="toggleSelectAll(this.checked)"></th>
-                <th class="bulk-col" style="display:none;">AÇÃO</th>
-                <th class="sortable" onclick="sortTable('ne')">NE <span id="sort-ne"></span></th>
-                <th class="sortable" onclick="sortTable('ug')">UG <span id="sort-ug"></span></th>
-                <th class="sortable" onclick="sortTable('categoria')">CATEGORIA <span id="sort-categoria"></span></th>
-                <th class="sortable" onclick="sortTable('tipo')">TIPO <span id="sort-tipo"></span></th>
-                <th class="sortable" onclick="sortTable('processo')">PROCESSO <span id="sort-processo"></span></th>
-                <th class="sortable" onclick="sortTable('descricao')">DESCRIÇÃO <span id="sort-descricao"></span></th>
-                <th class="sortable" onclick="sortTable('uasg')">UASG <span id="sort-uasg"></span></th>
-                <th class="sortable" onclick="sortTable('situacao')">SITUAÇÃO <span id="sort-situacao"></span></th>
-                <th class="sortable" onclick="sortTable('fase')">FASE <span id="sort-fase"></span></th>
-                <th class="sortable" onclick="sortTable('valor')">VALOR TOTAL <span id="sort-valor"></span></th>
-                <th class="sortable" onclick="sortTable('publi')">PUBLI <span id="sort-publi"></span></th>
-                <th class="sortable" onclick="sortTable('responsavel')">RESPONSÁVEL <span id="sort-responsavel"></span></th>
-                <th class="sortable" onclick="sortTable('atu')">ATU <span id="sort-atu"></span></th>
+                <th class="bulk-col col-chk" style="display:none; width: 40px;"><input type="checkbox" id="selectAllCheckbox" onchange="toggleSelectAll(this.checked)"></th>
+                <th class="bulk-col col-act" style="display:none; width: 80px;">AÇÃO</th>
+                <th class="sortable col-ne" onclick="sortTable('ne')">NE <span id="sort-ne"></span></th>
+                <th class="sortable col-ug" onclick="sortTable('ug')">UG <span id="sort-ug"></span></th>
+                <th class="sortable col-categoria" onclick="sortTable('categoria')">CATEGORIA <span id="sort-categoria"></span></th>
+                <th class="sortable col-tipo" onclick="sortTable('tipo')">TIPO <span id="sort-tipo"></span></th>
+                <th class="sortable col-processo" onclick="sortTable('processo')">PROCESSO <span id="sort-processo"></span></th>
+                <th class="sortable col-descricao" onclick="sortTable('descricao')">DESCRIÇÃO <span id="sort-descricao"></span></th>
+                <th class="sortable col-uasg" onclick="sortTable('uasg')">UASG <span id="sort-uasg"></span></th>
+                <th class="sortable col-situacao" onclick="sortTable('situacao')">SITUAÇÃO <span id="sort-situacao"></span></th>
+                <th class="sortable col-fase" onclick="sortTable('fase')">FASE <span id="sort-fase"></span></th>
+                <th class="sortable col-valor" onclick="sortTable('valor')">VALOR TOTAL <span id="sort-valor"></span></th>
+                <th class="sortable col-publi" onclick="sortTable('publi')">PUBLI <span id="sort-publi"></span></th>
+                <th class="sortable col-responsavel" onclick="sortTable('responsavel')">RESPONSÁVEL <span id="sort-responsavel"></span></th>
+                <th class="sortable col-atu" onclick="sortTable('atu')">ATU <span id="sort-atu"></span></th>
               </tr>
               <tr id="columnFiltersRow" style="display:none;">
-                <th class="bulk-col" style="display:none;"></th>
-                <th class="bulk-col" style="display:none;"></th>
-                <th></th>
-                <th><select class="col-filter-select" onchange="applyColumnFilter('ug', this.value)"></select></th>
-                <th><select class="col-filter-select" onchange="applyColumnFilter('categoria', this.value)"></select></th>
-                <th><select class="col-filter-select" onchange="applyColumnFilter('tipo', this.value)"></select></th>
-                <th><input type="text" class="col-filter-input" placeholder="Filtrar..." oninput="applyColumnFilter('processo', this.value)"></th>
-                <th></th>
-                <th><input type="text" class="col-filter-input" placeholder="Filtrar..." oninput="applyColumnFilter('uasg', this.value)"></th>
-                <th><select class="col-filter-select" onchange="applyColumnFilter('situacao', this.value)"></select></th>
-                <th><select class="col-filter-select" onchange="applyColumnFilter('fase', this.value)"></select></th>
-                <th></th>
-                <th><input type="text" class="col-filter-input" placeholder="Data..." oninput="applyColumnFilter('publi', this.value)"></th>
-                <th></th><th></th>
+                <th class="bulk-col col-chk" style="display:none;"></th>
+                <th class="bulk-col col-act" style="display:none;"></th>
+                <th class="col-ne"><input type="text" class="col-filter-input" placeholder="Filtrar..." oninput="applyColumnFilter('ne', this.value)"></th>
+                <th class="col-ug"><select class="col-filter-select" onchange="applyColumnFilter('ug', this.value)"></select></th>
+                <th class="col-categoria"><select class="col-filter-select" onchange="applyColumnFilter('categoria', this.value)"></select></th>
+                <th class="col-tipo"><select class="col-filter-select" onchange="applyColumnFilter('tipo', this.value)"></select></th>
+                <th class="col-processo"><input type="text" class="col-filter-input" placeholder="Filtrar..." oninput="applyColumnFilter('processo', this.value)"></th>
+                <th class="col-descricao"><select class="col-filter-select" onchange="applyColumnFilter('descricao', this.value)"></select></th>
+                <th class="col-uasg"><input type="text" class="col-filter-input" placeholder="Filtrar..." oninput="applyColumnFilter('uasg', this.value)"></th>
+                <th class="col-situacao"><select class="col-filter-select" onchange="applyColumnFilter('situacao', this.value)"></select></th>
+                <th class="col-fase"><select class="col-filter-select" onchange="applyColumnFilter('fase', this.value)"></select></th>
+                <th class="col-valor"><input type="text" class="col-filter-input" placeholder="Filtrar..." oninput="applyColumnFilter('valor', this.value)"></th>
+                <th class="col-publi"><input type="text" class="col-filter-input" placeholder="Data..." oninput="applyColumnFilter('publi', this.value)"></th>
+                <th class="col-responsavel"><select class="col-filter-select" onchange="applyColumnFilter('responsavel', this.value)"></select></th>
+                <th class="col-atu"><input type="text" class="col-filter-input" placeholder="Data..." oninput="applyColumnFilter('atu', this.value)"></th>
               </tr>
             </thead>
             <tbody id="neTableBody"></tbody>
@@ -449,8 +495,23 @@
           </div>
           <div><label style="font-size: 0.75rem;">PROCESSO</label><input type="text" id="modalProcesso" style="width: 100%;"></div>
 
-          <div style="grid-column: span 2;"><label style="font-size: 0.75rem;">DESCRIÇÃO</label><input type="text" id="modalDescricao" required style="width: 100%;"></div>
-          <div><label style="font-size: 0.75rem;">UASG</label><input type="text" id="modalUASG" required style="width: 100%;"></div>
+          <div style="grid-column: span 2;">
+            <label style="font-size: 0.75rem;">DESCRIÇÃO</label>
+            <select id="modalDescricao" required style="width: 100%;">
+              <option value="Alimentação e Aprovisionamento">Alimentação e Aprovisionamento</option>
+              <option value="Bens de Consumo e Estoque">Bens de Consumo e Estoque</option>
+              <option value="Manutenção de Armamento e Equipamentos de Defesa">Manutenção de Armamento e Equipamentos de Defesa</option>
+              <option value="Manutenção de Imóveis e Instalações">Manutenção de Imóveis e Instalações</option>
+              <option value="Manutenção de Máquinas e Climatização">Manutenção de Máquinas e Climatização</option>
+              <option value="Saneamento e Infraestrutura Externa">Saneamento e Infraestrutura Externa</option>
+              <option value="Segurança, EPI e Proteção contra Incêndio">Segurança, EPI e Proteção contra Incêndio</option>
+              <option value="Serviços de Logística e Transporte">Serviços de Logística e Transporte</option>
+              <option value="Serviços Técnicos e TI/Softwares">Serviços Técnicos e TI/Softwares</option>
+              <option value="Serviços Terceirizados e Mão de Obra">Serviços Terceirizados e Mão de Obra</option>
+              <option value="Assistência à Saúde e PASA">Assistência à Saúde e PASA</option>
+              <option value="Despesas com Pessoal e Diárias">Despesas com Pessoal e Diárias</option>
+            </select>
+          </div>
 
           <div>
             <label style="font-size: 0.75rem;">SITUAÇÃO</label>
@@ -658,6 +719,67 @@
       ugs.forEach(ug => { select.innerHTML += `<option value="${ug}">${ug}</option>`; });
     }
 
+    const COLUMN_DEFINITIONS = [
+      { id: 'ne', label: 'NE' },
+      { id: 'ug', label: 'UG' },
+      { id: 'categoria', label: 'CATEGORIA' },
+      { id: 'tipo', label: 'TIPO' },
+      { id: 'processo', label: 'PROCESSO' },
+      { id: 'descricao', label: 'DESCRIÇÃO' },
+      { id: 'uasg', label: 'UASG' },
+      { id: 'situacao', label: 'SITUAÇÃO' },
+      { id: 'fase', label: 'FASE' },
+      { id: 'valor', label: 'VALOR TOTAL' },
+      { id: 'publi', label: 'PUBLI' },
+      { id: 'responsavel', label: 'RESPONSÁVEL' },
+      { id: 'atu', label: 'ATU' }
+    ];
+
+    let hiddenColumns = JSON.parse(localStorage.getItem('ne_hidden_cols')) || [];
+
+    function toggleColumnVisibilityPanel() {
+      const panel = document.getElementById('colTogglePanel');
+      if (panel.style.display === 'flex') {
+        panel.style.display = 'none';
+      } else {
+        renderColumnVisibilityOptions();
+        panel.style.display = 'flex';
+      }
+    }
+
+    function renderColumnVisibilityOptions() {
+      const panel = document.getElementById('colTogglePanel');
+      panel.innerHTML = '<strong>Exibir/Ocultar Colunas:</strong> ';
+      COLUMN_DEFINITIONS.forEach(col => {
+        const isChecked = !hiddenColumns.includes(col.id);
+        panel.innerHTML += `
+          <label class="col-toggle-item">
+            <input type="checkbox" ${isChecked ? 'checked' : ''} onchange="toggleColumnVisibility('${col.id}', this.checked)">
+            ${col.label}
+          </label>
+        `;
+      });
+    }
+
+    function toggleColumnVisibility(colId, isVisible) {
+      if (!isVisible) {
+        if (!hiddenColumns.includes(colId)) hiddenColumns.push(colId);
+      } else {
+        hiddenColumns = hiddenColumns.filter(c => c !== colId);
+      }
+      localStorage.setItem('ne_hidden_cols', JSON.stringify(hiddenColumns));
+      applyColumnVisibilityStyles();
+    }
+
+    function applyColumnVisibilityStyles() {
+      COLUMN_DEFINITIONS.forEach(col => {
+        const isHidden = hiddenColumns.includes(col.id);
+        document.querySelectorAll(`.col-${col.id}`).forEach(el => {
+          el.style.display = isHidden ? 'none' : '';
+        });
+      });
+    }
+
     function populateColumnDropdowns() {
       const populate = (selector, key) => {
         const select = document.querySelector(selector);
@@ -668,6 +790,43 @@
         vals.forEach(v => { if(v) select.innerHTML += `<option value="${v}">${v}</option>`; });
         select.value = cur;
       };
+      populate('select[onchange*="\'ug\'"]', 'ug');
+      populate('select[onchange*="\'categoria\'"]', 'categoria');
+      populate('select[onchange*="\'tipo\'"]', 'tipo');
+      populate('select[onchange*="\'situacao\'"]', 'situacao');
+      populate('select[onchange*="\'fase\'"]', 'fase');
+      populate('select[onchange*="\'descricao\'"]', 'descricao');
+      populate('select[onchange*="\'responsavel\'"]', 'responsavel');
+    }
+
+    async function deleteSelectedNEs() {
+      if (!isEditorOrAdmin()) return;
+      const ids = Array.from(state.selectedIds);
+      if (ids.length === 0) return alert('Nenhum registro selecionado.');
+
+      if (!confirm(`Confirma a exclusão de ${ids.length} registro(s)? Esta ação não pode ser desfeita.`)) return;
+
+      const { error } = await supabaseClient.from('empenhos').delete().in('id', ids);
+      if (error) return alert('Erro ao excluir registros: ' + error.message);
+
+      state.selectedIds.clear();
+      updateBulkPanel();
+      await fetchSheetData();
+      alert('Registro(s) excluído(s) com sucesso!');
+    }
+
+    async function deleteSingleNE(id) {
+      if (!isEditorOrAdmin()) return;
+      const item = state.nes.find(n => n.id === id);
+      if (!item) return;
+
+      if (!confirm(`Confirma a exclusão da NE "${item.ne}"?`)) return;
+
+      const { error } = await supabaseClient.from('empenhos').delete().eq('id', id);
+      if (error) return alert('Erro ao excluir registro: ' + error.message);
+
+      await fetchSheetData();
+    }
       populate('select[onchange*="\'ug\'"]', 'ug');
       populate('select[onchange*="\'categoria\'"]', 'categoria');
       populate('select[onchange*="\'tipo\'"]', 'tipo');
@@ -807,24 +966,31 @@
         const isChecked = state.selectedIds.has(item.id);
         const tr = document.createElement('tr');
         tr.innerHTML = `
-          <td class="bulk-col" style="${state.showBulkPanel ? '' : 'display:none;'}"><input type="checkbox" ${isChecked ? 'checked' : ''} onchange="toggleSelectRow('${item.id}', this.checked)"></td>
-          <td class="bulk-col" style="${state.showBulkPanel ? '' : 'display:none;'}"><button class="btn btn-secondary" style="font-size:0.75rem; padding:3px 8px;" onclick="openEditModal('${item.id}')"><i class="fa-solid fa-pen"></i></button></td>
-          <td><strong>${item.ne}</strong></td>
-          <td>${item.ug}</td>
-          <td>${item.categoria}</td>
-          <td>${item.tipo}</td>
-          <td>${item.processo}</td>
-          <td>${item.descricao}</td>
-          <td>${item.uasg}</td>
-          <td><span class="badge ${item.situacao === 'Publicado' ? 'badge-publicado' : 'badge-publicar'}">${item.situacao}</span></td>
-          <td>${item.fase}</td>
-          <td>R$ ${item.valor.toLocaleString('pt-BR', {minimumFractionDigits: 2})}</td>
-          <td>${item.publi}</td>
-          <td>${item.responsavel}</td>
-          <td>${item.atu}</td>
+          <td class="bulk-col col-chk" style="${state.showBulkPanel ? '' : 'display:none;'}"><input type="checkbox" ${isChecked ? 'checked' : ''} onchange="toggleSelectRow('${item.id}', this.checked)"></td>
+          <td class="bulk-col col-act" style="${state.showBulkPanel ? '' : 'display:none;'}">
+            <div style="display:flex; gap:4px;">
+              <button class="btn btn-secondary" style="font-size:0.75rem; padding:3px 6px;" onclick="openEditModal('${item.id}')" title="Editar"><i class="fa-solid fa-pen"></i></button>
+              <button class="btn btn-secondary" style="font-size:0.75rem; padding:3px 6px; color:#f87171;" onclick="deleteSingleNE('${item.id}')" title="Excluir"><i class="fa-solid fa-trash"></i></button>
+            </div>
+          </td>
+          <td class="col-ne"><strong>${item.ne}</strong></td>
+          <td class="col-ug">${item.ug}</td>
+          <td class="col-categoria">${item.categoria}</td>
+          <td class="col-tipo">${item.tipo}</td>
+          <td class="col-processo">${item.processo}</td>
+          <td class="col-descricao">${item.descricao}</td>
+          <td class="col-uasg">${item.uasg}</td>
+          <td class="col-situacao"><span class="badge ${item.situacao === 'Publicado' ? 'badge-publicado' : 'badge-publicar'}">${item.situacao}</span></td>
+          <td class="col-fase">${item.fase}</td>
+          <td class="col-valor">R$ ${item.valor.toLocaleString('pt-BR', {minimumFractionDigits: 2})}</td>
+          <td class="col-publi">${item.publi}</td>
+          <td class="col-responsavel">${item.responsavel}</td>
+          <td class="col-atu">${item.atu}</td>
         `;
         tbody.appendChild(tr);
       });
+
+      applyColumnVisibilityStyles();
 
       const maxPage = state.pageSize === 'all' ? 1 : Math.ceil(total / parseInt(state.pageSize)) || 1;
       const infoText = `Página ${state.currentPage} de ${maxPage} (${total} registros)`;
