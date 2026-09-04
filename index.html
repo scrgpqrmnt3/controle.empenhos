@@ -1236,9 +1236,12 @@
       document.getElementById('loginModal').style.display = 'none';
     }
 
-    async function doLogin() {
-      const userField = document.getElementById('login-username').value.trim();
-      const passField = document.getElementById('login-password').value;
+    async function doLogin(e) {
+      if (e) e.preventDefault(); // Impede o formulário de recarregar a página
+      
+      // Correção dos IDs para mapear exatamente o HTML existente
+      const userField = document.getElementById('loginNome').value.trim();
+      const passField = document.getElementById('loginSenha').value;
 
       if (!userField || !passField) {
         alert("Preencha e-mail e senha.");
@@ -1246,7 +1249,6 @@
       }
 
       try {
-        // Usando supabaseClient
         const { data: authData, error: authError } = await supabaseClient.auth.signInWithPassword({
           email: userField,
           password: passField
@@ -1254,7 +1256,6 @@
 
         if (authError) throw new Error("Credenciais inválidas.");
 
-        // Usando supabaseClient
         const { data: profileData, error: profileError } = await supabaseClient
           .from('perfis_usuario')
           .select('nome, perfil')
@@ -1273,10 +1274,12 @@
         
         closeLoginModal();
         applyPermissions();
-        // fetchSheetData();
+        fetchSheetData(); // Restabelece a busca imediata de dados pós-login
     
       } catch (error) {
-        alert("Erro no login: " + error.message);
+        const errorDiv = document.getElementById('loginError');
+        errorDiv.textContent = "Erro no login: " + error.message;
+        errorDiv.style.display = 'block';
       }
     }
 
@@ -1337,6 +1340,9 @@
           switchTab('tab-dashboard', document.querySelector('nav button'));
         }
       }
+      
+      // Essencial: desenha o botão de "Entrar" ou o card do usuário na barra lateral
+      renderSessionUI();
     }
 
     /* ---------- Painel de administração de usuários (aba Configurações) ---------- */
@@ -1432,10 +1438,19 @@
       }
     }
 
-    function updateSyncStatus(isOnline) {
+    function updateSyncStatus(status, message) {
       const el = document.getElementById('syncIndicator');
-      el.innerHTML = isOnline ? '<i class="fa-solid fa-circle-check"></i> Sincronizado' : '<i class="fa-solid fa-circle-xmark"></i> Modo Offline';
-      el.className = isOnline ? 'sync-status status-online' : 'sync-status status-offline';
+      
+      if (status === 'synced') {
+        el.innerHTML = `<i class="fa-solid fa-circle-check"></i> ${message}`;
+        el.className = 'sync-status status-online';
+      } else if (status === 'syncing') {
+        el.innerHTML = `<i class="fa-solid fa-rotate fa-spin"></i> ${message}`;
+        el.className = 'sync-status status-online'; // Mantém o estilo base mas com ícone giratório
+      } else {
+        el.innerHTML = `<i class="fa-solid fa-circle-xmark"></i> ${message}`;
+        el.className = 'sync-status status-offline';
+      }
     }
 
     function switchTab(tabId, btn) {
