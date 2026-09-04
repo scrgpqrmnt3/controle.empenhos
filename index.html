@@ -625,7 +625,7 @@
 
     const state = {
       theme: localStorage.getItem('ne_theme') || 'dark',
-      session: JSON.parse(localStorage.getItem('ne_session')) || null, // Unificado: ne_session e state.session
+      session: JSON.parse(localStorage.getItem('ne_session')) || null,
       danfeStock: parseInt(localStorage.getItem('ne_danfe_stock')) || 0,
       danfeLogs: JSON.parse(localStorage.getItem('ne_danfe_logs')) || [],
       columnFilters: {},
@@ -640,7 +640,7 @@
     };
 
     document.addEventListener("DOMContentLoaded", () => {
-      checkSession(); // Valida o token armazenado e, na sequência, chama fetchSheetData
+      checkSession(); 
     });
 
     function toggleTheme() {
@@ -678,34 +678,42 @@
         
         if (error) throw error;
 
-        // Mapeia populando state.nes DIRETAMENTE, usando as propriedades corretas em minúsculo
-        state.nes = data.map(row => ({
-          id: row.id,
-          ano: row.ano,
-          ne: row.ne,
-          ug: row.ug,
-          uasg: row.uasg || '',
-          categoria: row.categoria,
-          tipo: row.tipo,
-          processo: row.processo || '',
-          descricao: row.descricao,
-          situacao: row.situacao,
-          fase: row.fase,
-          valor: Number(row.valor_total),
-          publi: formatDate(row.publi),
-          responsavel: row.responsavel || '',
-          atu: formatDate(row.atu),
-          danfes_registradas: typeof row.danfes_registradas === 'string' ? JSON.parse(row.danfes_registradas) : (row.danfes_registradas || [])
-        }));
+        state.nes = data.map(row => {
+          // Garante extração segura do JSONB de DANFEs
+          const danfes = typeof row.danfes_registradas === 'string' ? JSON.parse(row.danfes_registradas) : (row.danfes_registradas || []);
+          const totalDanfes = danfes.reduce((acc, curr) => acc + (Number(curr.valor) || 0), 0);
+          const valTotal = Number(row.valor_total) || 0;
+          
+          return {
+            id: row.id,
+            ano: row.ano,
+            ne: row.ne,
+            ug: row.ug,
+            uasg: row.uasg || '',
+            categoria: row.categoria,
+            tipo: row.tipo,
+            processo: row.processo || '',
+            descricao: row.descricao,
+            situacao: row.situacao,
+            fase: row.fase,
+            valor: valTotal,
+            saldo: valTotal - totalDanfes,
+            publi: formatDate(row.publi),
+            responsavel: row.responsavel || '',
+            atu: formatDate(row.atu),
+            danfes_registradas: danfes
+          };
+        });
 
         populateUGSelect();
         populateColumnDropdowns();
         applyFilters();
         updateDashboard();
         renderCharts();
-        updateSyncStatus('synced', 'Dados Sincronizados');
+        renderDanfeMetrics(); // Corrigido: alimenta a aba Metas no carregamento
+        updateSyncStatus('synced', 'Sincronizado com Supabase');
       } catch (error) {
-        console.error("Erro ao buscar dados na Base:", error);
+        console.error("Erro ao buscar dados:", error);
         updateSyncStatus('error', 'Erro na sincronização');
       }
     }
@@ -769,6 +777,9 @@
       { id: 'valor', label: 'VALOR TOTAL' },
       { id: 'saldo', label: 'SALDO' },
       { id: 'publi', label: 'PUBLI' },
+      { id: 'responsavel', label: 'RESPONSÁVEL' },
+      { id: 'atu', label: 'ATU' }
+    ];
 
     let hiddenColumns = JSON.parse(localStorage.getItem('ne_hidden_cols')) || [];
 
@@ -834,65 +845,6 @@
       populate('select[onchange*="\'responsavel\'"]', 'responsavel');
     }
 
-    async function deleteSelectedNEs() {
-      if (!isEditorOrAdmin()) return;
-      const ids = Array.from(state.selectedIds);
-      if (ids.length === 0) return alert('Nenhum registro selecionado.');
-
-      if (!confirm(`Confirma a exclusão de ${ids.length} registro(s)? Esta ação não pode ser desfeita.`)) return;
-
-      const { error } = await supabaseClient.from('empenhos').delete().in('id', ids);
-      if (error) return alert('Erro ao excluir registros: ' + error.message);
-
-      state.selectedIds.clear();
-      updateBulkPanel();
-      await fetchSheetData();
-      alert('Registro(s) excluído(s) com sucesso!');
-    }
-
-    async function deleteSingleNE(id) {
-      if (!isEditorOrAdmin()) return;
-      const item = state.nes.find(n => n.id === id);
-      if (!item) return;
-
-      if (!confirm(`Confirma a exclusão da NE "${item.ne}"?`)) return;
-
-      const { error } = await supabaseClient.from('empenhos').delete().eq('id', id);
-      if (error) return alert('Erro ao excluir registro: ' + error.message);
-
-      await fetchSheetData();
-    }
-
-    async function toggleDanfeStatus(id, tipoDanfe) {
-      if (!isEditorOrAdmin()) return;
-      const item = state.nes.find(n => n.id === id);
-      if (!item) return;
-
-      let patch = {};
-      const today = new Date().toISOString().split('T')[0];
-
-      if (tipoDanfe === 'liquidacao') {
-        const status = !item.danfe_liquidacao;
-        patch = { danfe_liquidacao: status, danfe_liquidacao_data: status ? today : null };
-        // Se desmarcar liquidação, desmarca pagamento automaticamente por regra de dependência
-        if (!status) {
-          patch.danfe_pagamento = false;
-          patch.danfe_pagamento_data = null;
-        }
-      } else if (tipoDanfe === 'pagamento') {
-        if (!item.danfe_liquidacao) {
-          return alert('A DANFE de liquidação deve ser registrada antes do pagamento.');
-        }
-        const status = !item.danfe_pagamento;
-        patch = { danfe_pagamento: status, danfe_pagamento_data: status ? today : null };
-      }
-
-      const { error } = await supabaseClient.from('empenhos').update(patch).eq('id', id);
-      if (error) return alert('Erro ao atualizar status da DANFE: ' + error.message);
-
-      await fetchSheetData();
-    }
-
     function toggleColumnFilters() {
       state.showColumnFilters = !state.showColumnFilters;
       document.getElementById('columnFiltersRow').style.display = state.showColumnFilters ? 'table-row' : 'none';
@@ -933,7 +885,6 @@
       const anoFilter = document.getElementById('filterAnoBar').value;
 
       let filtered = state.nes.filter(item => {
-        // Correção aplicada: uso de fallback || '' para evitar que colunas nulas quebrem o frontend
         const matchesSearch = (item.ne || '').toLowerCase().includes(search) || 
                               (item.processo || '').toLowerCase().includes(search) ||
                               (item.descricao || '').toLowerCase().includes(search) ||
@@ -944,7 +895,12 @@
 
         let matchesCols = true;
         for (const col in state.columnFilters) {
-          if (item[col] && !item[col].toString().toLowerCase().includes(state.columnFilters[col])) {
+          if (item[col] !== undefined && item[col] !== null) {
+            if (!item[col].toString().toLowerCase().includes(state.columnFilters[col])) {
+              matchesCols = false;
+              break;
+            }
+          } else {
             matchesCols = false;
             break;
           }
@@ -1024,8 +980,6 @@
       pageData.forEach((item) => {
         const isChecked = state.selectedIds.has(item.id);
         const tr = document.createElement('tr');
-        const totalDanfes = (item.danfes_registradas || []).reduce((acc, curr) => acc + (Number(curr.valor) || 0), 0);
-        const saldo = item.valor - totalDanfes;
         
         tr.innerHTML = `
           <td class="bulk-col col-chk" style="${state.showBulkPanel ? '' : 'display:none;'}"><input type="checkbox" ${isChecked ? 'checked' : ''} onchange="toggleSelectRow('${item.id}', this.checked)"></td>
@@ -1045,8 +999,8 @@
           <td class="col-uasg">${item.uasg}</td>
           <td class="col-situacao"><span class="badge ${item.situacao === 'Publicado' ? 'badge-publicado' : 'badge-publicar'}">${item.situacao}</span></td>
           <td class="col-fase">${item.fase}</td>
-          <td class="col-valor">R$ ${item.valor.toLocaleString('pt-BR', {minimumFractionDigits: 2})}</td>
-          <td class="col-saldo"><strong style="color: ${saldo < 0 ? '#f87171' : (saldo === 0 ? '#10b981' : 'inherit')}">R$ ${saldo.toLocaleString('pt-BR', {minimumFractionDigits: 2})}</strong></td>
+          <td class="col-valor">R$ ${(item.valor || 0).toLocaleString('pt-BR', {minimumFractionDigits: 2})}</td>
+          <td class="col-saldo"><strong style="color: ${item.saldo < 0 ? '#f87171' : (item.saldo === 0 ? '#10b981' : 'inherit')}">R$ ${(item.saldo || 0).toLocaleString('pt-BR', {minimumFractionDigits: 2})}</strong></td>
           <td class="col-publi">${item.publi}</td>
           <td class="col-responsavel">${item.responsavel}</td>
           <td class="col-atu">${item.atu}</td>
@@ -1093,8 +1047,34 @@
     }
 
     /* ==========================================================
-     * ESCRITA DE DADOS (POST/PATCH) VIA SUPABASE
+     * ESCRITA DE DADOS (POST/PATCH/DELETE) VIA SUPABASE
      * ========================================================== */
+    async function deleteSelectedNEs() {
+      if (!isEditorOrAdmin()) return;
+      const ids = Array.from(state.selectedIds);
+      if (ids.length === 0) return alert('Nenhum registro selecionado.');
+      if (!confirm(`Confirma a exclusão de ${ids.length} registro(s)? Esta ação não pode ser desfeita.`)) return;
+
+      const { error } = await supabaseClient.from('empenhos').delete().in('id', ids);
+      if (error) return alert('Erro ao excluir registros: ' + error.message);
+
+      state.selectedIds.clear();
+      updateBulkPanel();
+      await fetchSheetData();
+      alert('Registro(s) excluído(s) com sucesso!');
+    }
+
+    async function deleteSingleNE(id) {
+      if (!isEditorOrAdmin()) return;
+      const item = state.nes.find(n => n.id === id);
+      if (!item) return;
+      if (!confirm(`Confirma a exclusão da NE "${item.ne}"?`)) return;
+
+      const { error } = await supabaseClient.from('empenhos').delete().eq('id', id);
+      if (error) return alert('Erro ao excluir registro: ' + error.message);
+      await fetchSheetData();
+    }
+
     async function applyBulkUpdate() {
       if (!isEditorOrAdmin()) return;
       const newFase = document.getElementById('bulkFase').value;
@@ -1106,9 +1086,7 @@
       if (newFase) patch.fase = newFase;
       if (newSit) patch.situacao = newSit;
 
-      // Executa o update em lote nativo da API REST do Supabase
       const { error } = await supabaseClient.from('empenhos').update(patch).in('id', Array.from(state.selectedIds));
-      
       if (error) return alert('Erro ao atualizar: ' + error.message);
 
       state.selectedIds.clear();
@@ -1139,7 +1117,6 @@
       const btn = document.querySelector('#neForm button[type="submit"]');
       btn.disabled = true; 
       btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Salvando...';
-
       let error = null;
 
       if (editId) {
@@ -1178,14 +1155,12 @@
           btn.innerHTML = '<i class="fa-solid fa-check"></i> Salvar Registros';
           return alert('Insira ao menos um item válido no lote.');
         }
-
         const res = await supabaseClient.from('empenhos').insert(payloadArray);
         error = res.error;
       }
 
       btn.disabled = false; 
       btn.innerHTML = '<i class="fa-solid fa-check"></i> Salvar Registros';
-
       if (error) return alert('Erro ao salvar: ' + error.message);
       
       closeModal();
@@ -1193,147 +1168,8 @@
     }
 
     /* ==========================================================
-     * METAS E DANFES
+     * GESTÃO DE DANFEs EM NE
      * ========================================================== */
-    function saveDanfeStock() {
-      if (!isEditorOrAdmin()) return;
-      const val = parseInt(document.getElementById('danfeStockInput').value) || 0;
-      state.danfeStock = val;
-      localStorage.setItem('ne_danfe_stock', val);
-      renderDanfeMetrics();
-      alert('Estoque de DANFEs atualizado!');
-    }
-
-    function logDanfeProduction(e) {
-      e.preventDefault();
-      if (!isEditorOrAdmin()) return;
-      const qty = parseInt(document.getElementById('danfeQtyLog').value) || 0;
-      if (qty <= 0) return;
-
-      const log = { data: new Date().toLocaleDateString('pt-BR'), usuario: state.session.nome, quantidade: qty };
-      state.danfeLogs.push(log);
-      state.danfeStock = Math.max(0, state.danfeStock - qty);
-      
-      localStorage.setItem('ne_danfe_logs', JSON.stringify(state.danfeLogs));
-      localStorage.setItem('ne_danfe_stock', state.danfeStock);
-      
-      document.getElementById('danfeStockInput').value = state.danfeStock;
-      document.getElementById('danfeQtyLog').value = '';
-      
-      renderDanfeMetrics();
-      alert('Produção registrada com sucesso!');
-    }
-
-    function renderDanfeMetrics() {
-      const container = document.getElementById('danfePerformanceMetrics');
-      
-      const nesPendentesPublicacao = state.nes.filter(n => n.situacao === 'Publicar').length;
-      
-      let danfesPendentesDspace = 0;
-      let valorTotalPendente = 0;
-
-      state.nes.forEach(n => {
-        const danfes = n.danfes_registradas || [];
-        danfes.forEach(d => {
-          if (!d.publicada_dspace) {
-            danfesPendentesDspace++;
-            valorTotalPendente += (Number(d.valor) || 0);
-          }
-        });
-      });
-
-      const userTotals = {};
-      let grandTotal = 0;
-      state.danfeLogs.forEach(l => {
-        userTotals[l.usuario] = (userTotals[l.usuario] || 0) + l.quantidade;
-        grandTotal += l.quantidade;
-      });
-
-      const avgDaily = state.danfeLogs.length > 0 ? (grandTotal / state.danfeLogs.length).toFixed(1) : 0;
-      const daysToZeroFolder = avgDaily > 0 ? Math.ceil(state.danfeStock / avgDaily) : '∞';
-
-      let html = `
-        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 15px; margin-bottom: 20px;">
-          <div style="padding: 12px; border-radius: 8px; background: rgba(0,0,0,0.15);">
-            <div style="font-size:0.75rem; color:var(--text-muted);">NEs Pendentes de Publicação</div>
-            <div style="font-size: 1.4rem; font-weight:700; color:var(--badge-publicar-text);">${nesPendentesPublicacao} NEs</div>
-          </div>
-          <div style="padding: 12px; border-radius: 8px; background: rgba(0,0,0,0.15);">
-            <div style="font-size:0.75rem; color:var(--text-muted);">DANFEs Pendentes (DSpace)</div>
-            <div style="font-size: 1.4rem; font-weight:700; color:#f87171;">${danfesPendentesDspace} DANFEs</div>
-          </div>
-          <div style="padding: 12px; border-radius: 8px; background: rgba(0,0,0,0.15);">
-            <div style="font-size:0.75rem; color:var(--text-muted);">Passivo Financeiro sem DSpace</div>
-            <div style="font-size: 1.4rem; font-weight:700; color:var(--accent);">R$ ${valorTotalPendente.toLocaleString('pt-BR', {minimumFractionDigits: 2})}</div>
-          </div>
-          <div style="padding: 12px; border-radius: 8px; background: rgba(0,0,0,0.15);">
-            <div style="font-size:0.75rem; color:var(--text-muted);">Previsão Quitação (Pasta Local)</div>
-            <div style="font-size: 1.4rem; font-weight:700;">${daysToZeroFolder} dias</div>
-          </div>
-        </div>
-        <h4 style="font-size:0.85rem; margin-bottom:10px; color:var(--text-muted);">Produção Registrada pela Equipe:</h4>
-      `;
-
-      for (const u in userTotals) {
-        html += `<div style="display:flex; justify-content:space-between; font-size:0.85rem; padding: 6px 0; border-bottom: 1px solid var(--border-color);"><span><i class="fa-solid fa-user me-2 text-muted"></i>${u}</span><strong>${userTotals[u]} DANFEs</strong></div>`;
-      }
-      container.innerHTML = html;
-    }
-    /* ==========================================================
-     * MODAIS DA INTERFACE
-     * ========================================================== */
-    let currentModalMode = 'single';
-
-    function setModalMode(mode) {
-      currentModalMode = mode;
-      const btnSingle = document.getElementById('btnModeSingle');
-      const btnBatch = document.getElementById('btnModeBatch');
-      const fieldNE = document.getElementById('fieldSingleNE');
-      const fieldValor = document.getElementById('fieldSingleValor');
-      const batchContainer = document.getElementById('batchContainer');
-      const inputNE = document.getElementById('modalNE');
-      const inputValor = document.getElementById('modalValor');
-
-      if (mode === 'batch') {
-        btnSingle.className = 'btn btn-secondary';
-        btnBatch.className = 'btn btn-accent';
-        fieldNE.style.display = 'none';
-        fieldValor.style.display = 'none';
-        batchContainer.style.display = 'block';
-        inputNE.removeAttribute('required');
-        inputValor.removeAttribute('required');
-        document.querySelectorAll('#batchRows input').forEach(inp => inp.setAttribute('required', 'required'));
-        
-        const container = document.getElementById('batchRows');
-        if (container.children.length === 0) addBatchRow();
-      } else {
-        btnSingle.className = 'btn btn-accent';
-        btnBatch.className = 'btn btn-secondary';
-        fieldNE.style.display = 'block';
-        fieldValor.style.display = 'block';
-        batchContainer.style.display = 'none';
-        inputNE.setAttribute('required', 'required');
-        inputValor.setAttribute('required', 'required');
-        document.querySelectorAll('#batchRows input').forEach(inp => inp.removeAttribute('required'));
-      }
-    }
-
-    function addBatchRow() {
-      const container = document.getElementById('batchRows');
-      const rowId = 'batch_row_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4);
-      const req = currentModalMode === 'batch' ? 'required' : '';
-      const row = document.createElement('div');
-      row.id = rowId;
-      row.style.cssText = 'display:flex; gap:10px; align-items:center;';
-      row.innerHTML = `
-        <input type="text" placeholder="Nº NE (6 dígitos)" class="batch-ne" ${req} style="flex:1;">
-        <input type="number" step="0.01" placeholder="Valor (R$)" class="batch-valor" ${req} style="flex:1;">
-        <button type="button" class="btn btn-secondary" onclick="removeBatchRow('${rowId}')" style="padding:6px 10px; color:var(--badge-publicar-text);"><i class="fa-solid fa-trash"></i></button>
-      `;
-      container.appendChild(row);
-    }
-    
-    /* === GESTÃO DE DANFEs === */
     function openDanfeModal(id) {
       const item = state.nes.find(n => n.id === id);
       if (!item) return;
@@ -1405,7 +1241,6 @@
       
       const item = state.nes.find(n => n.id === id);
       const arr = item.danfes_registradas ? [...item.danfes_registradas] : [];
-      
       arr.push({ numero, valor, fase, publicada_dspace: false });
       
       if (await saveDanfeArrayToDB(id, arr)) {
@@ -1431,6 +1266,150 @@
       const arr = [...item.danfes_registradas];
       arr[index].publicada_dspace = isChecked;
       await saveDanfeArrayToDB(id, arr);
+    }
+
+    /* ==========================================================
+     * METAS E MÉTRICAS
+     * ========================================================== */
+    function saveDanfeStock() {
+      if (!isEditorOrAdmin()) return;
+      const val = parseInt(document.getElementById('danfeStockInput').value) || 0;
+      state.danfeStock = val;
+      localStorage.setItem('ne_danfe_stock', val);
+      renderDanfeMetrics();
+      alert('Estoque de DANFEs atualizado!');
+    }
+
+    function logDanfeProduction(e) {
+      e.preventDefault();
+      if (!isEditorOrAdmin()) return;
+      const qty = parseInt(document.getElementById('danfeQtyLog').value) || 0;
+      if (qty <= 0) return;
+
+      const log = { data: new Date().toLocaleDateString('pt-BR'), usuario: state.session.nome, quantidade: qty };
+      state.danfeLogs.push(log);
+      state.danfeStock = Math.max(0, state.danfeStock - qty);
+      
+      localStorage.setItem('ne_danfe_logs', JSON.stringify(state.danfeLogs));
+      localStorage.setItem('ne_danfe_stock', state.danfeStock);
+      
+      document.getElementById('danfeStockInput').value = state.danfeStock;
+      document.getElementById('danfeQtyLog').value = '';
+      
+      renderDanfeMetrics();
+      alert('Produção registrada com sucesso!');
+    }
+
+    function renderDanfeMetrics() {
+      const container = document.getElementById('danfePerformanceMetrics');
+      if (!container) return;
+      
+      const nesPendentesPublicacao = state.nes.filter(n => n.situacao === 'Publicar').length;
+      let danfesPendentesDspace = 0;
+      let valorTotalPendente = 0;
+
+      state.nes.forEach(n => {
+        const danfes = n.danfes_registradas || [];
+        danfes.forEach(d => {
+          if (!d.publicada_dspace) {
+            danfesPendentesDspace++;
+            valorTotalPendente += (Number(d.valor) || 0);
+          }
+        });
+      });
+
+      const userTotals = {};
+      let grandTotal = 0;
+      state.danfeLogs.forEach(l => {
+        userTotals[l.usuario] = (userTotals[l.usuario] || 0) + l.quantidade;
+        grandTotal += l.quantidade;
+      });
+
+      const avgDaily = state.danfeLogs.length > 0 ? (grandTotal / state.danfeLogs.length).toFixed(1) : 0;
+      const daysToZeroFolder = avgDaily > 0 ? Math.ceil(state.danfeStock / avgDaily) : '∞';
+
+      let html = `
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 15px; margin-bottom: 20px;">
+          <div style="padding: 12px; border-radius: 8px; background: rgba(0,0,0,0.15);">
+            <div style="font-size:0.75rem; color:var(--text-muted);">NEs Pendentes de Publicação</div>
+            <div style="font-size: 1.4rem; font-weight:700; color:var(--badge-publicar-text);">${nesPendentesPublicacao} NEs</div>
+          </div>
+          <div style="padding: 12px; border-radius: 8px; background: rgba(0,0,0,0.15);">
+            <div style="font-size:0.75rem; color:var(--text-muted);">DANFEs Pendentes (DSpace)</div>
+            <div style="font-size: 1.4rem; font-weight:700; color:#f87171;">${danfesPendentesDspace} DANFEs</div>
+          </div>
+          <div style="padding: 12px; border-radius: 8px; background: rgba(0,0,0,0.15);">
+            <div style="font-size:0.75rem; color:var(--text-muted);">Passivo Financeiro sem DSpace</div>
+            <div style="font-size: 1.4rem; font-weight:700; color:var(--accent);">R$ ${valorTotalPendente.toLocaleString('pt-BR', {minimumFractionDigits: 2})}</div>
+          </div>
+          <div style="padding: 12px; border-radius: 8px; background: rgba(0,0,0,0.15);">
+            <div style="font-size:0.75rem; color:var(--text-muted);">Previsão Quitação (Pasta Local)</div>
+            <div style="font-size: 1.4rem; font-weight:700;">${daysToZeroFolder} dias</div>
+          </div>
+        </div>
+        <h4 style="font-size:0.85rem; margin-bottom:10px; color:var(--text-muted);">Produção Registrada pela Equipe:</h4>
+      `;
+
+      for (const u in userTotals) {
+        html += `<div style="display:flex; justify-content:space-between; font-size:0.85rem; padding: 6px 0; border-bottom: 1px solid var(--border-color);"><span><i class="fa-solid fa-user me-2 text-muted"></i>${u}</span><strong>${userTotals[u]} DANFEs</strong></div>`;
+      }
+      container.innerHTML = html;
+    }
+
+    /* ==========================================================
+     * MODAL PRINCIPAL (NE) E LOTE
+     * ========================================================== */
+    let currentModalMode = 'single';
+
+    function setModalMode(mode) {
+      currentModalMode = mode;
+      const btnSingle = document.getElementById('btnModeSingle');
+      const btnBatch = document.getElementById('btnModeBatch');
+      const fieldNE = document.getElementById('fieldSingleNE');
+      const fieldValor = document.getElementById('fieldSingleValor');
+      const batchContainer = document.getElementById('batchContainer');
+      const inputNE = document.getElementById('modalNE');
+      const inputValor = document.getElementById('modalValor');
+
+      if (mode === 'batch') {
+        btnSingle.className = 'btn btn-secondary';
+        btnBatch.className = 'btn btn-accent';
+        fieldNE.style.display = 'none';
+        fieldValor.style.display = 'none';
+        batchContainer.style.display = 'block';
+        
+        inputNE.removeAttribute('required');
+        inputValor.removeAttribute('required');
+        document.querySelectorAll('#batchRows input').forEach(inp => inp.setAttribute('required', 'required'));
+        
+        const container = document.getElementById('batchRows');
+        if (container.children.length === 0) addBatchRow();
+      } else {
+        btnSingle.className = 'btn btn-accent';
+        btnBatch.className = 'btn btn-secondary';
+        fieldNE.style.display = 'block';
+        fieldValor.style.display = 'block';
+        batchContainer.style.display = 'none';
+        
+        inputNE.setAttribute('required', 'required');
+        inputValor.setAttribute('required', 'required');
+        document.querySelectorAll('#batchRows input').forEach(inp => inp.removeAttribute('required'));
+      }
+    }
+
+    function addBatchRow() {
+      const container = document.getElementById('batchRows');
+      const rowId = 'batch_row_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4);
+      const req = currentModalMode === 'batch' ? 'required' : '';
+      const row = document.createElement('div');
+      row.id = rowId;
+      row.style.cssText = 'display:flex; gap:10px; align-items:center;';
+      row.innerHTML = `
+        <input type="text" placeholder="Nº NE (6 dígitos)" class="batch-ne" ${req} style="flex:1;">
+        <input type="number" step="0.01" placeholder="Valor (R$)" class="batch-valor" ${req} style="flex:1;">
+        <button type="button" class="btn btn-secondary" onclick="removeBatchRow('${rowId}')" style="padding:6px 10px; color:var(--badge-publicar-text);"><i class="fa-solid fa-trash"></i></button>
+      `;
+      container.appendChild(row);
     }
 
     function removeBatchRow(rowId) {
@@ -1488,7 +1467,7 @@
     }
 
     /* ==========================================================
-     * SESSÃO / LOGIN / PERFIS DE ACESSO
+     * SESSÃO E PERFIS
      * ========================================================== */
     function isAdmin() { return !!state.session && state.session.perfil === 'admin'; }
     function isEditorOrAdmin() { return !!state.session && (state.session.perfil === 'admin' || state.session.perfil === 'editor'); }
@@ -1527,22 +1506,18 @@
       
       const emailField = document.getElementById('loginNome').value.trim();
       const passField = document.getElementById('loginSenha').value;
-
       if (!emailField || !passField) return alert("Preencha e-mail e senha.");
 
       try {
         const { data: authData, error: authError } = await supabaseClient.auth.signInWithPassword({
           email: emailField, password: passField
         });
-        
-        if (authError) throw new Error(authError.message); // Expõe a real mensagem do Supabase
+        if (authError) throw new Error(authError.message);
 
         const { data: profileData, error: profileError } = await supabaseClient
           .from('perfis_usuario').select('nome, perfil').eq('id', authData.user.id).single();
-        
         if (profileError) throw new Error(`DB Error [${profileError.code}]: ${profileError.message} / Detalhes: ${profileError.details || 'Nenhum'}`);
 
-        // Unificação do estado da sessão (corrigindo bug Crítico 2)
         state.session = { id: authData.user.id, nome: profileData.nome, perfil: profileData.perfil };
         localStorage.setItem('ne_session', JSON.stringify(state.session));
 
@@ -1583,7 +1558,6 @@
       
     function applyPermissions() {
       const editorOuAdmin = isEditorOrAdmin();
-
       document.getElementById('navMetas').style.display = editorOuAdmin ? '' : 'none';
       document.getElementById('btnNovaNE').style.display = editorOuAdmin ? '' : 'none';
       document.getElementById('btnAcoesEditar').style.display = editorOuAdmin ? '' : 'none';
@@ -1595,13 +1569,9 @@
       }
 
       const activeTab = document.querySelector('.tab-content.active');
-      if (activeTab) {
-        if (activeTab.id === 'tab-metas' && !editorOuAdmin) {
-          switchTab('tab-dashboard', document.querySelector('nav button'));
-        }
+      if (activeTab && activeTab.id === 'tab-metas' && !editorOuAdmin) {
+        switchTab('tab-dashboard', document.querySelector('nav button'));
       }
-      
-      // Essencial: renderiza a UI lateral dependendo se está logado ou não
       renderSessionUI();
     }
 
