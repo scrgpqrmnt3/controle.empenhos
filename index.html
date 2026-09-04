@@ -393,6 +393,7 @@
                 <th class="sortable col-situacao" onclick="sortTable('situacao')">SITUAÇÃO <span id="sort-situacao"></span></th>
                 <th class="sortable col-fase" onclick="sortTable('fase')">FASE <span id="sort-fase"></span></th>
                 <th class="sortable col-valor" onclick="sortTable('valor')">VALOR TOTAL <span id="sort-valor"></span></th>
+                <th class="sortable col-saldo" onclick="sortTable('saldo')">SALDO <span id="sort-saldo"></span></th>
                 <th class="sortable col-publi" onclick="sortTable('publi')">PUBLI <span id="sort-publi"></span></th>
                 <th class="sortable col-responsavel" onclick="sortTable('responsavel')">RESPONSÁVEL <span id="sort-responsavel"></span></th>
                 <th class="sortable col-atu" onclick="sortTable('atu')">ATU <span id="sort-atu"></span></th>
@@ -410,6 +411,7 @@
                 <th class="col-situacao"><select class="col-filter-select" onchange="applyColumnFilter('situacao', this.value)"></select></th>
                 <th class="col-fase"><select class="col-filter-select" onchange="applyColumnFilter('fase', this.value)"></select></th>
                 <th class="col-valor"><input type="text" class="col-filter-input" placeholder="Filtrar..." oninput="applyColumnFilter('valor', this.value)"></th>
+                <th class="col-saldo"><input type="text" class="col-filter-input" placeholder="Filtrar..." oninput="applyColumnFilter('saldo', this.value)"></th>
                 <th class="col-publi"><input type="text" class="col-filter-input" placeholder="Data..." oninput="applyColumnFilter('publi', this.value)"></th>
                 <th class="col-responsavel"><select class="col-filter-select" onchange="applyColumnFilter('responsavel', this.value)"></select></th>
                 <th class="col-atu"><input type="text" class="col-filter-input" placeholder="Data..." oninput="applyColumnFilter('atu', this.value)"></th>
@@ -553,6 +555,40 @@
     </div>
   </div>
 
+  <div id="danfeModal" class="modal-backdrop">
+    <div class="modal glass" style="max-width: 650px;">
+      <h3 style="margin-bottom: 15px; display: flex; align-items: center; gap: 8px;"><i class="fa-solid fa-file-invoice-dollar"></i> Gerenciar DANFEs - <span id="danfeModalNE"></span></h3>
+      <input type="hidden" id="danfeModalEditId" value="">
+      
+      <div style="background: rgba(0,0,0,0.15); padding: 12px; border-radius: 8px; margin-bottom: 15px; display: flex; justify-content: space-between;">
+        <div><span style="font-size: 0.75rem; color: var(--text-muted);">VALOR TOTAL DA NE:</span><br><strong id="danfeModalValorTotal" style="color: var(--text-main);">R$ 0,00</strong></div>
+        <div><span style="font-size: 0.75rem; color: var(--text-muted);">SALDO RESTANTE:</span><br><strong id="danfeModalSaldo" style="color: var(--accent);">R$ 0,00</strong></div>
+      </div>
+
+      <div style="margin-bottom: 15px;">
+        <label style="font-size: 0.85rem; font-weight: 600;">Adicionar Nova DANFE</label>
+        <div style="display: flex; gap: 10px; margin-top: 5px;">
+          <input type="text" id="novaDanfeNumero" placeholder="Nº DANFE" style="flex: 1;">
+          <input type="number" id="novaDanfeValor" step="0.01" placeholder="Valor (R$)" style="flex: 1;">
+          <select id="novaDanfeFase" style="flex: 1;">
+            <option value="Liquidação">Liquidação</option>
+            <option value="Pagamento">Pagamento</option>
+          </select>
+          <button type="button" class="btn btn-accent" onclick="addDanfeToNE()"><i class="fa-solid fa-plus"></i> Add</button>
+        </div>
+      </div>
+
+      <div style="border-top: 1px solid var(--border-color); padding-top: 15px;">
+        <label style="font-size: 0.85rem; font-weight: 600; margin-bottom: 10px; display: block;">DANFEs Registradas</label>
+        <div id="danfeListContainer" style="max-height: 250px; overflow-y: auto;"></div>
+      </div>
+
+      <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:20px;">
+        <button type="button" class="btn btn-secondary" onclick="closeDanfeModal()">Fechar</button>
+      </div>
+    </div>
+  </div>
+
   <div id="loginModal" class="modal-backdrop">
     <div class="modal glass" style="max-width: 380px;">
       <h3 style="margin-bottom: 15px; display: flex; align-items: center; gap: 8px;"><i class="fa-solid fa-right-to-bracket"></i> Entrar no Sistema</h3>
@@ -659,10 +695,7 @@
           publi: formatDate(row.publi),
           responsavel: row.responsavel || '',
           atu: formatDate(row.atu),
-          danfe_liquidacao: row.danfe_liquidacao || false,
-          danfe_liquidacao_data: row.danfe_liquidacao_data || null,
-          danfe_pagamento: row.danfe_pagamento || false,
-          danfe_pagamento_data: row.danfe_pagamento_data || null
+          danfes_registradas: typeof row.danfes_registradas === 'string' ? JSON.parse(row.danfes_registradas) : (row.danfes_registradas || [])
         }));
 
         populateUGSelect();
@@ -734,10 +767,8 @@
       { id: 'situacao', label: 'SITUAÇÃO' },
       { id: 'fase', label: 'FASE' },
       { id: 'valor', label: 'VALOR TOTAL' },
+      { id: 'saldo', label: 'SALDO' },
       { id: 'publi', label: 'PUBLI' },
-      { id: 'responsavel', label: 'RESPONSÁVEL' },
-      { id: 'atu', label: 'ATU' }
-    ];
 
     let hiddenColumns = JSON.parse(localStorage.getItem('ne_hidden_cols')) || [];
 
@@ -993,10 +1024,14 @@
       pageData.forEach((item) => {
         const isChecked = state.selectedIds.has(item.id);
         const tr = document.createElement('tr');
+        const totalDanfes = (item.danfes_registradas || []).reduce((acc, curr) => acc + (Number(curr.valor) || 0), 0);
+        const saldo = item.valor - totalDanfes;
+        
         tr.innerHTML = `
           <td class="bulk-col col-chk" style="${state.showBulkPanel ? '' : 'display:none;'}"><input type="checkbox" ${isChecked ? 'checked' : ''} onchange="toggleSelectRow('${item.id}', this.checked)"></td>
           <td class="bulk-col col-act" style="${state.showBulkPanel ? '' : 'display:none;'}">
             <div style="display:flex; gap:4px;">
+              <button class="btn btn-secondary" style="font-size:0.75rem; padding:3px 6px; color:#3b82f6;" onclick="openDanfeModal('${item.id}')" title="Gerenciar DANFEs"><i class="fa-solid fa-file-invoice-dollar"></i></button>
               <button class="btn btn-secondary" style="font-size:0.75rem; padding:3px 6px;" onclick="openEditModal('${item.id}')" title="Editar"><i class="fa-solid fa-pen"></i></button>
               <button class="btn btn-secondary" style="font-size:0.75rem; padding:3px 6px; color:#f87171;" onclick="deleteSingleNE('${item.id}')" title="Excluir"><i class="fa-solid fa-trash"></i></button>
             </div>
@@ -1011,6 +1046,7 @@
           <td class="col-situacao"><span class="badge ${item.situacao === 'Publicado' ? 'badge-publicado' : 'badge-publicar'}">${item.situacao}</span></td>
           <td class="col-fase">${item.fase}</td>
           <td class="col-valor">R$ ${item.valor.toLocaleString('pt-BR', {minimumFractionDigits: 2})}</td>
+          <td class="col-saldo"><strong style="color: ${saldo < 0 ? '#f87171' : (saldo === 0 ? '#10b981' : 'inherit')}">R$ ${saldo.toLocaleString('pt-BR', {minimumFractionDigits: 2})}</strong></td>
           <td class="col-publi">${item.publi}</td>
           <td class="col-responsavel">${item.responsavel}</td>
           <td class="col-atu">${item.atu}</td>
@@ -1191,19 +1227,23 @@
     function renderDanfeMetrics() {
       const container = document.getElementById('danfePerformanceMetrics');
       
-      // Contadores derivados da base real do Supabase
       const nesPendentesPublicacao = state.nes.filter(n => n.situacao === 'Publicar').length;
-      const nesLiquidadasOuPagas = state.nes.filter(n => n.fase === 'Liquidado' || n.fase === 'Pago');
-      const danfesPendentesDspace = nesLiquidadasOuPagas.filter(n => !n.danfe_liquidacao || !n.danfe_pagamento).length;
       
-      // Cálculo de Saldo Financeiro Pendente
-      const valorTotalPendente = nesLiquidadasOuPagas
-        .filter(n => !n.danfe_pagamento)
-        .reduce((acc, curr) => acc + (curr.valor || 0), 0);
+      let danfesPendentesDspace = 0;
+      let valorTotalPendente = 0;
+
+      state.nes.forEach(n => {
+        const danfes = n.danfes_registradas || [];
+        danfes.forEach(d => {
+          if (!d.publicada_dspace) {
+            danfesPendentesDspace++;
+            valorTotalPendente += (Number(d.valor) || 0);
+          }
+        });
+      });
 
       const userTotals = {};
       let grandTotal = 0;
-
       state.danfeLogs.forEach(l => {
         userTotals[l.usuario] = (userTotals[l.usuario] || 0) + l.quantidade;
         grandTotal += l.quantidade;
@@ -1211,7 +1251,6 @@
 
       const avgDaily = state.danfeLogs.length > 0 ? (grandTotal / state.danfeLogs.length).toFixed(1) : 0;
       const daysToZeroFolder = avgDaily > 0 ? Math.ceil(state.danfeStock / avgDaily) : '∞';
-      const daysToZeroDspace = avgDaily > 0 ? Math.ceil(danfesPendentesDspace / avgDaily) : '∞';
 
       let html = `
         <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 15px; margin-bottom: 20px;">
@@ -1224,7 +1263,7 @@
             <div style="font-size: 1.4rem; font-weight:700; color:#f87171;">${danfesPendentesDspace} DANFEs</div>
           </div>
           <div style="padding: 12px; border-radius: 8px; background: rgba(0,0,0,0.15);">
-            <div style="font-size:0.75rem; color:var(--text-muted);">Passivo Financeiro sem DANFE</div>
+            <div style="font-size:0.75rem; color:var(--text-muted);">Passivo Financeiro sem DSpace</div>
             <div style="font-size: 1.4rem; font-weight:700; color:var(--accent);">R$ ${valorTotalPendente.toLocaleString('pt-BR', {minimumFractionDigits: 2})}</div>
           </div>
           <div style="padding: 12px; border-radius: 8px; background: rgba(0,0,0,0.15);">
@@ -1240,7 +1279,6 @@
       }
       container.innerHTML = html;
     }
-
     /* ==========================================================
      * MODAIS DA INTERFACE
      * ========================================================== */
@@ -1264,11 +1302,10 @@
         batchContainer.style.display = 'block';
         inputNE.removeAttribute('required');
         inputValor.removeAttribute('required');
+        document.querySelectorAll('#batchRows input').forEach(inp => inp.setAttribute('required', 'required'));
         
         const container = document.getElementById('batchRows');
-        if (container.children.length === 0) {
-          addBatchRow();
-        }
+        if (container.children.length === 0) addBatchRow();
       } else {
         btnSingle.className = 'btn btn-accent';
         btnBatch.className = 'btn btn-secondary';
@@ -1277,21 +1314,123 @@
         batchContainer.style.display = 'none';
         inputNE.setAttribute('required', 'required');
         inputValor.setAttribute('required', 'required');
+        document.querySelectorAll('#batchRows input').forEach(inp => inp.removeAttribute('required'));
       }
     }
 
     function addBatchRow() {
       const container = document.getElementById('batchRows');
       const rowId = 'batch_row_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4);
+      const req = currentModalMode === 'batch' ? 'required' : '';
       const row = document.createElement('div');
       row.id = rowId;
       row.style.cssText = 'display:flex; gap:10px; align-items:center;';
       row.innerHTML = `
-        <input type="text" placeholder="Nº NE (6 dígitos)" class="batch-ne" required style="flex:1;">
-        <input type="number" step="0.01" placeholder="Valor (R$)" class="batch-valor" required style="flex:1;">
+        <input type="text" placeholder="Nº NE (6 dígitos)" class="batch-ne" ${req} style="flex:1;">
+        <input type="number" step="0.01" placeholder="Valor (R$)" class="batch-valor" ${req} style="flex:1;">
         <button type="button" class="btn btn-secondary" onclick="removeBatchRow('${rowId}')" style="padding:6px 10px; color:var(--badge-publicar-text);"><i class="fa-solid fa-trash"></i></button>
       `;
       container.appendChild(row);
+    }
+    
+    /* === GESTÃO DE DANFEs === */
+    function openDanfeModal(id) {
+      const item = state.nes.find(n => n.id === id);
+      if (!item) return;
+      document.getElementById('danfeModalEditId').value = item.id;
+      document.getElementById('danfeModalNE').textContent = item.ne;
+      document.getElementById('danfeModal').style.display = 'flex';
+      renderDanfeList(item);
+    }
+
+    function closeDanfeModal() {
+      document.getElementById('danfeModal').style.display = 'none';
+    }
+
+    function renderDanfeList(item) {
+      const container = document.getElementById('danfeListContainer');
+      const totalNe = Number(item.valor) || 0;
+      let somaDanfes = 0;
+      const arr = item.danfes_registradas || [];
+      
+      container.innerHTML = '';
+      if (arr.length === 0) {
+        container.innerHTML = '<div style="font-size:0.8rem; color:var(--text-muted); text-align:center; padding: 10px;">Nenhuma DANFE registrada para esta NE.</div>';
+      } else {
+        arr.forEach((d, idx) => {
+          somaDanfes += Number(d.valor);
+          container.innerHTML += `
+            <div style="display:flex; justify-content:space-between; align-items:center; padding: 8px 12px; background: rgba(255,255,255,0.03); border: 1px solid var(--border-color); border-radius: 6px; margin-bottom: 8px;">
+              <div>
+                <strong style="font-size: 0.85rem;">Nº ${d.numero}</strong> <span class="badge ${d.fase === 'Liquidação' ? 'badge-publicar' : 'badge-publicado'}" style="margin-left: 5px;">${d.fase}</span><br>
+                <span style="font-size: 0.75rem; color: var(--text-muted);">R$ ${Number(d.valor).toLocaleString('pt-BR', {minimumFractionDigits: 2})}</span>
+              </div>
+              <div style="display:flex; gap:10px; align-items:center;">
+                <label style="font-size: 0.75rem; display:flex; align-items:center; gap:4px; cursor:pointer;">
+                  <input type="checkbox" ${d.publicada_dspace ? 'checked' : ''} onchange="toggleDanfeDspace(${idx}, this.checked)"> DSpace
+                </label>
+                <button type="button" class="btn btn-secondary" onclick="removeDanfe(${idx})" style="padding:4px 8px; font-size:0.7rem; color:#f87171;"><i class="fa-solid fa-trash"></i></button>
+              </div>
+            </div>
+          `;
+        });
+      }
+      
+      const saldo = totalNe - somaDanfes;
+      document.getElementById('danfeModalValorTotal').textContent = `R$ ${totalNe.toLocaleString('pt-BR', {minimumFractionDigits: 2})}`;
+      document.getElementById('danfeModalSaldo').textContent = `R$ ${saldo.toLocaleString('pt-BR', {minimumFractionDigits: 2})}`;
+      document.getElementById('danfeModalSaldo').style.color = saldo < 0 ? '#f87171' : (saldo === 0 ? '#10b981' : 'var(--accent)');
+    }
+
+    async function saveDanfeArrayToDB(id, newArray) {
+      const { error } = await supabaseClient.from('empenhos').update({ danfes_registradas: newArray }).eq('id', id);
+      if (error) {
+        alert('Erro ao salvar DANFEs: ' + error.message);
+        return false;
+      }
+      await fetchSheetData();
+      const updatedItem = state.nes.find(n => n.id === id);
+      renderDanfeList(updatedItem);
+      return true;
+    }
+
+    async function addDanfeToNE() {
+      if (!isEditorOrAdmin()) return;
+      const id = document.getElementById('danfeModalEditId').value;
+      const numero = document.getElementById('novaDanfeNumero').value.trim();
+      const valor = parseFloat(document.getElementById('novaDanfeValor').value);
+      const fase = document.getElementById('novaDanfeFase').value;
+      
+      if (!numero || isNaN(valor)) return alert('Preencha o número e um valor válido.');
+      
+      const item = state.nes.find(n => n.id === id);
+      const arr = item.danfes_registradas ? [...item.danfes_registradas] : [];
+      
+      arr.push({ numero, valor, fase, publicada_dspace: false });
+      
+      if (await saveDanfeArrayToDB(id, arr)) {
+        document.getElementById('novaDanfeNumero').value = '';
+        document.getElementById('novaDanfeValor').value = '';
+      }
+    }
+
+    async function removeDanfe(index) {
+      if (!isEditorOrAdmin()) return;
+      if (!confirm('Deseja excluir esta DANFE?')) return;
+      const id = document.getElementById('danfeModalEditId').value;
+      const item = state.nes.find(n => n.id === id);
+      const arr = [...item.danfes_registradas];
+      arr.splice(index, 1);
+      await saveDanfeArrayToDB(id, arr);
+    }
+
+    async function toggleDanfeDspace(index, isChecked) {
+      if (!isEditorOrAdmin()) return;
+      const id = document.getElementById('danfeModalEditId').value;
+      const item = state.nes.find(n => n.id === id);
+      const arr = [...item.danfes_registradas];
+      arr[index].publicada_dspace = isChecked;
+      await saveDanfeArrayToDB(id, arr);
     }
 
     function removeBatchRow(rowId) {
