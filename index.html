@@ -521,7 +521,8 @@
 
     const SUPABASE_URL = "https://qjvrywvtqrgbkqmsolbc.supabase.co/rest/v1/";
     const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFqdnJ5d3Z0cXJnYmtxbXNvbGJjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODgzODQzNjQsImV4cCI6MjEwMzk2MDM2NH0.0Nc9Gz6TRMlM9yX8M7bd63E45114JsaiDRTE9iFxbyk";
-    const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    // Renomeado para supabaseClient para evitar conflito com a variável global da CDN
+    const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
     const SYNC_INTERVAL_MS = 15000;
     let chartsInstance = {};
@@ -1240,53 +1241,68 @@
       document.getElementById('loginModal').style.display = 'none';
     }
 
-    async function doLogin(e) {
-      e.preventDefault();
-      const nome = document.getElementById('loginNome').value.trim();
-      const senha = document.getElementById('loginSenha').value;
-      const errEl = document.getElementById('loginError');
-      errEl.style.display = 'none';
+    async function doLogin() {
+      const userField = document.getElementById('login-username').value.trim();
+      const passField = document.getElementById('login-password').value;
+
+      if (!userField || !passField) {
+        alert("Preencha e-mail e senha.");
+        return;
+      }
 
       try {
-        const result = await postToSheet('LOGIN', { nome, senha });
-        if (result.status === 'success') {
-          state.session = result.user;
-          localStorage.setItem('ne_session', JSON.stringify(state.session));
-          closeLoginModal();
-          renderSessionUI();
-          applyPermissions();
-          fetchSheetData();
-        } else {
-          errEl.textContent = result.message || 'Usuário ou senha inválidos.';
-          errEl.style.display = 'block';
-        }
-      } catch (err) {
-        console.error(err);
-        errEl.textContent = 'Erro de conexão. Verifique a URL do Apps Script.';
-        errEl.style.display = 'block';
+        // Usando supabaseClient
+        const { data: authData, error: authError } = await supabaseClient.auth.signInWithPassword({
+          email: userField,
+          password: passField
+        });
+
+        if (authError) throw new Error("Credenciais inválidas.");
+
+        // Usando supabaseClient
+        const { data: profileData, error: profileError } = await supabaseClient
+          .from('perfis_usuario')
+          .select('nome, perfil')
+          .eq('id', authData.user.id)
+          .single();
+
+        if (profileError) throw new Error("Erro ao carregar perfil de permissões.");
+    
+        state.currentUser = {
+          id: authData.user.id,
+          nome: profileData.nome,
+          perfil: profileData.perfil
+        };
+
+        localStorage.setItem('empenhos_user', JSON.stringify(state.currentUser));
+        
+        closeLoginModal();
+        applyPermissions();
+        // fetchSheetData();
+    
+      } catch (error) {
+        alert("Erro no login: " + error.message);
       }
     }
 
-    function doLogout() {
-      state.session = null;
-      localStorage.removeItem('ne_session');
-      renderSessionUI();
+    async function doLogout() {
+      await supabaseClient.auth.signOut(); // Usando supabaseClient
+      state.currentUser = null;
+      localStorage.removeItem('empenhos_user');
       applyPermissions();
     }
 
     async function checkSession() {
       try {
-        // 1. Pergunta ao servidor Supabase se o token salvo no navegador ainda é válido
-        const { data: { session }, error } = await supabase.auth.getSession();
-    
+        // Usando supabaseClient
+        const { data: { session }, error } = await supabaseClient.auth.getSession();
+        
         if (session && !error) {
-          // 2. Se for válido, recarrega os dados do perfil armazenados localmente
-        const savedUser = localStorage.getItem('empenhos_user');
+          const savedUser = localStorage.getItem('empenhos_user');
           if (savedUser) {
             state.currentUser = JSON.parse(savedUser);
           }
         } else {
-          // 3. Se expirou ou não existe, limpa o estado
           state.currentUser = null;
           localStorage.removeItem('empenhos_user');
         }
@@ -1294,7 +1310,7 @@
         console.error("Erro ao checar sessão:", err);
         state.currentUser = null;
       }
-      // 4. Atualiza os botões e painéis da tela de acordo com o perfil
+      
       applyPermissions();
     }
       
