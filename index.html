@@ -1072,7 +1072,7 @@
         const { data: profileData, error: profileError } = await supabaseClient
           .from('perfis_usuario').select('nome, perfil').eq('id', authData.user.id).single();
         
-        if (profileError) throw new Error("Erro ao carregar perfil na tabela pública. Verifique se o UUID está lá.");
+        if (profileError) throw new Error(`DB Error [${profileError.code}]: ${profileError.message} / Detalhes: ${profileError.details || 'Nenhum'}`);
 
         // Unificação do estado da sessão (corrigindo bug Crítico 2)
         state.session = { id: authData.user.id, nome: profileData.nome, perfil: profileData.perfil };
