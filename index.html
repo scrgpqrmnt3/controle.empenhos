@@ -607,52 +607,47 @@
     }
 
     async function fetchSheetData() {
-      if (!GOOGLE_SCRIPT_URL || GOOGLE_SCRIPT_URL.indexOf('COLE_AQUI') !== -1) {
-        updateSyncStatus(false);
-        return;
-      }
-
+      updateSyncStatus('syncing', 'Sincronizando com Supabase...');
+      
       try {
-        const response = await fetch(GOOGLE_SCRIPT_URL);
-        if (!response.ok) throw new Error('HTTP Error');
-        const data = await response.json();
-        if (data.status !== 'success') throw new Error(data.message || 'Erro no servidor');
-
-        state.nes = data.nes.map(row => {
-          const norm = {};
-          Object.keys(row).forEach(k => norm[k.trim().toUpperCase()] = row[k]);
-
-          return {
-            id: norm['ID'] ? String(norm['ID']) : '',
-            ano: norm['ANO'] || new Date().getFullYear(),
-            ne: norm['NE'] ? String(norm['NE']) : 'Não Informado',
-            ug: norm['UG'] ? String(norm['UG']) : 'Não Informado',
-            categoria: norm['CATEGORIA'] ? String(norm['CATEGORIA']) : 'Outros',
-            tipo: norm['TIPO'] ? String(norm['TIPO']) : 'Ordinário',
-            processo: formatProcessoText(norm['PROCESSO']),
-            descricao: norm['DESCRIÇÃO'] || norm['DESCRICAO'] || '-',
-            uasg: norm['UASG'] ? String(norm['UASG']) : '-',
-            situacao: norm['SITUAÇÃO'] || norm['SITUACAO'] || 'Publicar',
-            fase: norm['FASE'] === 'Empenhado' ? 'Empenho' : (norm['FASE'] || 'Empenho'),
-            valor: parseCurrency(norm['VALOR TOTAL'] || norm['VALOR']),
-            publi: formatDate(norm['PUBLI']),
-            responsavel: norm['RESPONSÁVEL'] || norm['RESPONSAVEL'] || 'Não Informado',
-            atu: formatDate(norm['ATU'])
-          };
-        });
-
-        state.users = data.users || [];
-
-        updateSyncStatus(true);
-        populateColumnDropdowns();
-        populateUGSelect();
+        // 1. Busca os empenhos e as DANFs relacionadas (se houver join configurado, ou tabela principal)
+        const { data: empenhosData, error: empenhosError } = await supabaseClient
+          .from('empenhos')
+          .select('*')
+          .order('ano', { ascending: false });
+    
+        if (empenhosError) throw empenhosError;
+    
+        // 2. Mapeia os dados do Supabase para o formato que a tabela e o estado global esperam
+        // (Garantindo compatibilidade com os nomes em maiúsculo/acentuados que a UI consome)
+        state.rawRows = empenhosData.map(row => ({
+          ID: row.id,
+          ANO: row.ano,
+          NE: row.ne,
+          UG: row.ug,
+          UASG: row.uasg,
+          CATEGORIA: row.categoria,
+          TIPO: row.tipo,
+          PROCESSO: row.processo,
+          DESCRIÇÃO: row.descricao,
+          SITUAÇÃO: row.situacao,
+          FASE: row.fase,
+          'VALOR TOTAL': row.valor_total,
+          PUBLI: row.publi,
+          RESPONSÁVEL: row.responsavel,
+          ATU: row.atu
+        }));
+    
+        state.filteredRows = [...state.rawRows];
+        
+        // 3. Atualiza UI, tabelas e gráficos
         applyFilters();
         updateDashboard();
-        renderCharts();
-        renderUsersAdminPanel();
-      } catch (err) {
-        console.error(err);
-        updateSyncStatus(false);
+        updateSyncStatus('synced', 'Sincronizado com Supabase');
+    
+      } catch (error) {
+        console.error("Erro ao buscar dados do Supabase:", error);
+        updateSyncStatus('error', 'Erro na sincronização');
       }
     }
 
