@@ -177,9 +177,6 @@
     .sync-status { font-size: 0.75rem; padding: 5px 10px; border-radius: 20px; font-weight: 600; display: inline-flex; align-items: center; gap: 6px; }
     .status-online { background-color: rgba(34, 197, 94, 0.2); color: #4ade80; }
     .status-offline { background-color: rgba(239, 68, 68, 0.2); color: #f87171; }
-
-    .user-item { display: flex; justify-content: space-between; align-items: center; padding: 12px; border-bottom: 1px solid var(--border-color); gap: 15px; }
-    .user-item-info { display: flex; align-items: center; gap: 12px; }
   </style>
 </head>
 <body>
@@ -200,7 +197,6 @@
         <li><button class="active" onclick="switchTab('tab-dashboard', this)"><i class="fa-solid fa-chart-pie"></i> <span>Visão Geral</span></button></li>
         <li><button onclick="switchTab('tab-tabela', this)"><i class="fa-solid fa-table-list"></i> <span>Planilha Empenhos</span></button></li>
         <li id="navMetas"><button onclick="switchTab('tab-metas', this)"><i class="fa-solid fa-bullseye"></i> <span>Metas & Desempenho</span></button></li>
-        <li id="navConfig"><button onclick="switchTab('tab-config', this)"><i class="fa-solid fa-gear"></i> <span>Configurações</span></button></li>
       </ul>
     </nav>
   </aside>
@@ -209,7 +205,7 @@
     <div class="top-header">
       <div>
         <h1 style="font-size: 1.4rem; font-weight: 700;">Dashboard Interativo</h1>
-        <p style="font-size: 0.85rem; color: var(--text-muted); margin-top: 2px;">Sincronizado via Google Sheets</p>
+        <p style="font-size: 0.85rem; color: var(--text-muted); margin-top: 2px;">Sincronizado via Supabase</p>
       </div>
 
       <div style="display: flex; align-items: center; gap: 15px;">
@@ -302,14 +298,15 @@
             <option value="Liquidado">Liquidado</option>
             <option value="Pago">Pago</option>
             <option value="Encerrado">Encerrado</option>
+            <option value="Arquivado">Arquivado</option>
+            <option value="Cancelado">Cancelado</option>
             <option value="Anulado">Anulado</option>
           </select>
           <select id="bulkSituacao">
             <option value="">Alterar Situação...</option>
             <option value="Publicar">Publicar</option>
             <option value="Publicado">Publicado</option>
-            <option value="Arquivado">Arquivado</option>
-            <option value="Cancelado">Cancelado</option>
+            <option value="Arquivar">Arquivar</option>
           </select>
           <button class="btn btn-accent" onclick="applyBulkUpdate()">Aplicar Alterações</button>
         </div>
@@ -417,22 +414,6 @@
       </div>
     </section>
 
-    <section id="tab-config" class="tab-content">
-      <div class="glass controls-card" style="max-width: 650px; margin-bottom: 20px;">
-        <h3 style="display: flex; align-items: center; gap: 8px;"><i class="fa-solid fa-users"></i> USUÁRIOS</h3>
-        <p style="font-size:0.85rem; color:var(--text-muted); margin-bottom:15px; margin-top: 4px;">Cadastre, edite, remova ou redefina a senha dos usuários do sistema (perfis Administrador e Editor).</p>
-        <div style="display:flex; gap:10px; margin-bottom:15px; flex-wrap: wrap;">
-          <input type="text" id="newUserNameInput" placeholder="Nome / Posto / Graduação" style="flex:1; min-width:160px;">
-          <input type="password" id="newUserPassInput" placeholder="Senha" style="flex:1; min-width:130px;">
-          <select id="newUserProfileInput" style="min-width:150px;">
-            <option value="editor">Editor</option>
-            <option value="admin">Administrador</option>
-          </select>
-          <button class="btn btn-accent" onclick="addUser()"><i class="fa-solid fa-user-plus"></i> Adicionar Usuário</button>
-        </div>
-        <div id="usersContainer"></div>
-      </div>
-    </section>
   </main>
 
   <div id="neModal" class="modal-backdrop">
@@ -450,7 +431,8 @@
             <select id="modalCategoria" required style="width:100%;">
               <option value="UGG">UGG</option><option value="UGP">UGP</option><option value="UGNP">UGNP</option>
               <option value="DISP">DISP</option><option value="INEX">INEX</option><option value="AJ CUSTO">AJ CUSTO</option>
-              <option value="IND TRNSP">IND TRNSP</option><option value="PASSG">PASSG</option><option value="DIÁRIA">DIÁRIA</option>
+              <option value="INDZ TRNSP">INDZ TRNSP</option><option value="PASSG">PASSG</option><option value="DIARIA">DIARIA</option>
+              <option value="ANEE">ANEE</option>
             </select>
           </div>
           <div>
@@ -468,14 +450,16 @@
             <label style="font-size: 0.75rem;">SITUAÇÃO</label>
             <select id="modalSituacao" required style="width:100%;">
               <option value="Publicar">Publicar</option><option value="Publicado">Publicado</option>
-              <option value="Arquivado">Arquivado</option><option value="Cancelado">Cancelado</option>
+              <option value="Arquivar">Arquivar</option>
             </select>
           </div>
           <div>
             <label style="font-size: 0.75rem;">FASE</label>
             <select id="modalFase" required style="width:100%;">
               <option value="Empenho">Empenho</option><option value="Liquidado">Liquidado</option>
-              <option value="Pago">Pago</option><option value="Encerrado">Encerrado</option><option value="Anulado">Anulado</option>
+              <option value="Pago">Pago</option><option value="Encerrado">Encerrado</option>
+              <option value="Arquivado">Arquivado</option><option value="Cancelado">Cancelado</option>
+              <option value="Anulado">Anulado</option>
             </select>
           </div>
           <div><label style="font-size: 0.75rem;">VALOR TOTAL (R$)</label><input type="number" step="0.01" id="modalValor" required style="width: 100%;"></div>
@@ -498,8 +482,8 @@
       <h3 style="margin-bottom: 15px; display: flex; align-items: center; gap: 8px;"><i class="fa-solid fa-right-to-bracket"></i> Entrar no Sistema</h3>
       <form id="loginForm" onsubmit="doLogin(event)">
         <div style="margin-bottom: 12px;">
-          <label style="font-size: 0.75rem;">Usuário</label>
-          <input type="text" id="loginNome" required style="width: 100%; margin-top: 4px;">
+          <label style="font-size: 0.75rem;">E-mail</label>
+          <input type="email" id="loginNome" required style="width: 100%; margin-top: 4px;" placeholder="seu@email.com">
         </div>
         <div style="margin-bottom: 12px;">
           <label style="font-size: 0.75rem;">Senha</label>
@@ -515,38 +499,21 @@
   </div>
 
   <script>
-    // ATENÇÃO: substitua pela URL do seu Web App do Google Apps Script
-    // (Extensões > Apps Script > Implantar > Nova implantação > Aplicativo da Web)
-    // const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxInpj39VRKchlIVv0WlehNoR2BuFAgaSJap5mWoNG52krOtvO7WxF2Asnw80WH5PE8/exec";
-
     const SUPABASE_URL = "https://qjvrywvtqrgbkqmsolbc.supabase.co/rest/v1/";
     const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFqdnJ5d3Z0cXJnYmtxbXNvbGJjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODgzODQzNjQsImV4cCI6MjEwMzk2MDM2NH0.0Nc9Gz6TRMlM9yX8M7bd63E45114JsaiDRTE9iFxbyk";
-    // Renomeado para supabaseClient para evitar conflito com a variável global da CDN
     const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
     const SYNC_INTERVAL_MS = 15000;
     let chartsInstance = {};
 
-    // PALETA EXTENSA DE 12 CORES ÚNICAS E DISTINTAS (SEM REPETIÇÃO)
     const EXTENDED_PALETTE = [
-      '#10b981', // Emerald
-      '#3b82f6', // Blue
-      '#f59e0b', // Amber
-      '#8b5cf6', // Purple
-      '#06b6d4', // Cyan
-      '#ec4899', // Pink
-      '#84cc16', // Lime
-      '#f97316', // Orange
-      '#14b8a6', // Teal
-      '#6366f1', // Indigo
-      '#e11d48', // Rose
-      '#64748b'  // Slate
+      '#10b981', '#3b82f6', '#f59e0b', '#8b5cf6', '#06b6d4', '#ec4899', 
+      '#84cc16', '#f97316', '#14b8a6', '#6366f1', '#e11d48', '#64748b'
     ];
 
     const state = {
       theme: localStorage.getItem('ne_theme') || 'dark',
-      session: JSON.parse(localStorage.getItem('ne_session')) || null, // {id, nome, perfil} ou null = Público
-      users: [], // carregado do servidor: [{id, nome, perfil}]
+      session: JSON.parse(localStorage.getItem('ne_session')) || null, // Unificado: ne_session e state.session
       danfeStock: parseInt(localStorage.getItem('ne_danfe_stock')) || 0,
       danfeLogs: JSON.parse(localStorage.getItem('ne_danfe_logs')) || [],
       columnFilters: {},
@@ -561,10 +528,7 @@
     };
 
     document.addEventListener("DOMContentLoaded", () => {
-      // Checa a sessão no Supabase primeiro
-      checkSession();
-  
-      // A busca inicial de dados (fetchSheetData) será ativada na Etapa 3.B
+      checkSession(); // Valida o token armazenado e, na sequência, chama fetchSheetData
     });
 
     function toggleTheme() {
@@ -591,66 +555,51 @@
       document.getElementById('sidebar').classList.toggle('collapsed');
     }
 
-    /**
-     * Chamada POST padrão ao Web App. Usa Content-Type "text/plain" de propósito:
-     * evita o preflight CORS (OPTIONS) que o Apps Script não responde, permitindo
-     * ler o corpo da resposta normalmente (diferente do antigo modo "no-cors",
-     * que escondia qualquer erro vindo do servidor).
-     */
-    async function postToSheet(action, data) {
-      const response = await fetch(GOOGLE_SCRIPT_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-        body: JSON.stringify({ action, data })
-      });
-      return await response.json();
-    }
-
+    /* ==========================================================
+     * LEITURA DE DADOS (GET) VIA SUPABASE
+     * ========================================================== */
     async function fetchSheetData() {
       updateSyncStatus('syncing', 'Sincronizando com Supabase...');
-      
       try {
-        // 1. Busca os empenhos e as DANFs relacionadas (se houver join configurado, ou tabela principal)
-        const { data: empenhosData, error: empenhosError } = await supabaseClient
-          .from('empenhos')
-          .select('*')
-          .order('ano', { ascending: false });
-    
-        if (empenhosError) throw empenhosError;
-    
-        // 2. Mapeia os dados do Supabase para o formato que a tabela e o estado global esperam
-        // (Garantindo compatibilidade com os nomes em maiúsculo/acentuados que a UI consome)
-        state.rawRows = empenhosData.map(row => ({
-          ID: row.id,
-          ANO: row.ano,
-          NE: row.ne,
-          UG: row.ug,
-          UASG: row.uasg,
-          CATEGORIA: row.categoria,
-          TIPO: row.tipo,
-          PROCESSO: row.processo,
-          DESCRIÇÃO: row.descricao,
-          SITUAÇÃO: row.situacao,
-          FASE: row.fase,
-          'VALOR TOTAL': row.valor_total,
-          PUBLI: row.publi,
-          RESPONSÁVEL: row.responsavel,
-          ATU: row.atu
-        }));
-    
-        state.filteredRows = [...state.rawRows];
+        const { data, error } = await supabaseClient
+          .from('empenhos').select('*').order('ano', { ascending: false });
         
-        // 3. Atualiza UI, tabelas e gráficos
+        if (error) throw error;
+
+        // Mapeia populando state.nes DIRETAMENTE, usando as propriedades corretas em minúsculo
+        state.nes = data.map(row => ({
+          id: row.id,
+          ano: row.ano,
+          ne: row.ne,
+          ug: row.ug,
+          uasg: row.uasg || '',
+          categoria: row.categoria,
+          tipo: row.tipo,
+          processo: row.processo || '',
+          descricao: row.descricao,
+          situacao: row.situacao,
+          fase: row.fase,
+          valor: Number(row.valor_total),
+          publi: formatDate(row.publi),
+          responsavel: row.responsavel || '',
+          atu: formatDate(row.atu)
+        }));
+
+        populateUGSelect();
+        populateColumnDropdowns();
         applyFilters();
         updateDashboard();
+        renderCharts();
         updateSyncStatus('synced', 'Sincronizado com Supabase');
-    
       } catch (error) {
         console.error("Erro ao buscar dados do Supabase:", error);
         updateSyncStatus('error', 'Erro na sincronização');
       }
     }
 
+    /* ==========================================================
+     * UTILITÁRIOS
+     * ========================================================== */
     function formatProcessoText(val) {
       if (!val && val !== 0) return '-';
       const str = String(val).trim();
@@ -664,16 +613,11 @@
     function formatDate(val) {
       if (!val && val !== 0) return '-';
       let str = String(val).trim();
-
       if (/^\d{1,2}\/\d{1,2}\/\d{4}/.test(str)) {
         const parts = str.split(' ')[0].split('/');
         return `${parts[0].padStart(2, '0')}/${parts[1].padStart(2, '0')}/${parts[2]}`;
       }
-
-      if (str.includes('T')) {
-        str = str.split('T')[0];
-      }
-
+      if (str.includes('T')) str = str.split('T')[0];
       if (str.includes('-')) {
         const parts = str.split('-');
         if (parts.length === 3) {
@@ -681,27 +625,20 @@
           return `${dia.padStart(2, '0')}/${mes.padStart(2, '0')}/${ano}`;
         }
       }
-
       return str;
     }
 
     function parseCurrency(val) {
       if (typeof val === 'number') return val;
       if (!val && val !== 0) return 0;
-      
-      let cleanStr = String(val)
-        .replace(/R\$\s?/gi, '')
-        .replace(/\./g, '')
-        .replace(',', '.')
-        .trim();
-        
+      let cleanStr = String(val).replace(/R\$\s?/gi, '').replace(/\./g, '').replace(',', '.').trim();
       return parseFloat(cleanStr) || 0;
     }
 
     function populateUGSelect() {
       const select = document.getElementById('modalUGSelect');
       const ugs = [...new Set(state.nes.map(item => item.ug))].sort();
-      if (ugs.length === 0) ugs.push('160300');
+      if (ugs.length === 0) ugs.push('160417', '167417');
       select.innerHTML = '';
       ugs.forEach(ug => { select.innerHTML += `<option value="${ug}">${ug}</option>`; });
     }
@@ -716,7 +653,6 @@
         vals.forEach(v => { if(v) select.innerHTML += `<option value="${v}">${v}</option>`; });
         select.value = cur;
       };
-
       populate('select[onchange*="\'ug\'"]', 'ug');
       populate('select[onchange*="\'categoria\'"]', 'categoria');
       populate('select[onchange*="\'tipo\'"]', 'tipo');
@@ -753,11 +689,9 @@
         state.sortKey = key;
         state.sortAsc = true;
       }
-
       document.querySelectorAll('th.sortable span').forEach(el => el.textContent = '');
       const currentThSpan = document.getElementById(`sort-${key}`);
       if (currentThSpan) currentThSpan.textContent = state.sortAsc ? ' ▲' : ' ▼';
-
       applyFilters();
     }
 
@@ -766,11 +700,12 @@
       const anoFilter = document.getElementById('filterAnoBar').value;
 
       let filtered = state.nes.filter(item => {
-        const matchesSearch = item.ne.toLowerCase().includes(search) || 
-                               item.processo.toLowerCase().includes(search) ||
-                               item.descricao.toLowerCase().includes(search) ||
-                               item.uasg.toLowerCase().includes(search) ||
-                               item.ug.toLowerCase().includes(search);
+        // Correção aplicada: uso de fallback || '' para evitar que colunas nulas quebrem o frontend
+        const matchesSearch = (item.ne || '').toLowerCase().includes(search) || 
+                              (item.processo || '').toLowerCase().includes(search) ||
+                              (item.descricao || '').toLowerCase().includes(search) ||
+                              (item.uasg || '').toLowerCase().includes(search) ||
+                              (item.ug || '').toLowerCase().includes(search);
         
         const matchesAnoBar = !anoFilter || item.ano.toString() === anoFilter;
 
@@ -788,16 +723,13 @@
         filtered.sort((a, b) => {
           let valA = a[state.sortKey];
           let valB = b[state.sortKey];
-
           if (typeof valA === 'string') valA = valA.toLowerCase();
           if (typeof valB === 'string') valB = valB.toLowerCase();
-
           if (valA < valB) return state.sortAsc ? -1 : 1;
           if (valA > valB) return state.sortAsc ? 1 : -1;
           return 0;
         });
       }
-
       renderTable(filtered);
     }
 
@@ -811,45 +743,32 @@
       document.getElementById('faseAnulado').textContent = countFase('Anulado');
     }
 
-    /* GRÁFICOS COM PALETA DE CORES ÚNICAS E EXCLUSIVAS */
     function renderCharts() {
       const isDark = state.theme === 'dark';
       const textColor = isDark ? '#94a3b8' : '#64748b';
-
       const createOrUpdate = (ctxId, type, labels, data, colors) => {
         if (chartsInstance[ctxId]) chartsInstance[ctxId].destroy();
         const ctx = document.getElementById(ctxId).getContext('2d');
         chartsInstance[ctxId] = new Chart(ctx, {
           type: type,
-          data: {
-            labels: labels,
-            datasets: [{ data: data, backgroundColor: colors, borderWidth: 0 }]
-          },
-          options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: { legend: { labels: { color: textColor, font: { family: 'Inter' } } } }
-          }
+          data: { labels: labels, datasets: [{ data: data, backgroundColor: colors, borderWidth: 0 }] },
+          options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { labels: { color: textColor, font: { family: 'Inter' } } } } }
         });
       };
 
-      // 1. Situação
       const pubCount = state.nes.filter(n => n.situacao === 'Publicado').length;
       const pendCount = state.nes.filter(n => n.situacao === 'Publicar').length;
       createOrUpdate('chartSituacao', 'doughnut', ['Publicado', 'Publicar'], [pubCount, pendCount], ['#10b981', '#f59e0b']);
 
-      // 2. Fases
       const fasesList = ['Empenho', 'Liquidado', 'Pago', 'Encerrado', 'Anulado'];
       const fasesData = fasesList.map(f => state.nes.filter(n => n.fase === f).length);
       createOrUpdate('chartFases', 'bar', fasesList, fasesData, ['#3b82f6', '#f59e0b', '#06b6d4', '#10b981', '#ef4444']);
 
-      // 3. Pendências UG (Atribuição de cores individuais da paleta estendida)
       const ugs = [...new Set(state.nes.map(n => n.ug || 'Não Informado'))];
       const ugData = ugs.map(u => state.nes.filter(n => (n.ug || 'Não Informado') === u && n.situacao === 'Publicar').length);
       const ugColors = ugs.map((_, idx) => EXTENDED_PALETTE[idx % EXTENDED_PALETTE.length]);
       createOrUpdate('chartUG', 'bar', ugs, ugData, ugColors);
 
-      // 4. Categorias (Atribuição de cores individuais da paleta estendida)
       const cats = [...new Set(state.nes.map(n => n.categoria || 'Outros'))];
       const catData = cats.map(c => state.nes.filter(n => (n.categoria || 'Outros') === c).length);
       const catColors = cats.map((_, idx) => EXTENDED_PALETTE[idx % EXTENDED_PALETTE.length]);
@@ -859,10 +778,8 @@
     function renderTable(data) {
       const tbody = document.getElementById('neTableBody');
       tbody.innerHTML = '';
-
       const total = data.length;
-      let start = 0;
-      let end = total;
+      let start = 0; let end = total;
 
       if (state.pageSize !== 'all') {
         const size = parseInt(state.pageSize);
@@ -871,7 +788,6 @@
       }
 
       const pageData = data.slice(start, end);
-
       pageData.forEach((item) => {
         const isChecked = state.selectedIds.has(item.id);
         const tr = document.createElement('tr');
@@ -901,27 +817,13 @@
       document.getElementById('pageInfoBottom').textContent = infoText;
     }
 
-    function changePageSize(val) {
-      state.pageSize = val;
-      state.currentPage = 1;
-      applyFilters();
-    }
-
-    function prevPage() {
-      if (state.currentPage > 1) {
-        state.currentPage--;
-        applyFilters();
-      }
-    }
-
+    function changePageSize(val) { state.pageSize = val; state.currentPage = 1; applyFilters(); }
+    function prevPage() { if (state.currentPage > 1) { state.currentPage--; applyFilters(); } }
     function nextPage() {
       const total = state.nes.length;
       if (state.pageSize !== 'all') {
         const maxPage = Math.ceil(total / parseInt(state.pageSize));
-        if (state.currentPage < maxPage) {
-          state.currentPage++;
-          applyFilters();
-        }
+        if (state.currentPage < maxPage) { state.currentPage++; applyFilters(); }
       }
     }
 
@@ -932,11 +834,8 @@
     }
 
     function toggleSelectAll(isChecked) {
-      if (isChecked) {
-        state.nes.forEach(n => state.selectedIds.add(n.id));
-      } else {
-        state.selectedIds.clear();
-      }
+      if (isChecked) state.nes.forEach(n => state.selectedIds.add(n.id));
+      else state.selectedIds.clear();
       applyFilters();
       updateBulkPanel();
     }
@@ -948,6 +847,9 @@
       panel.style.display = count > 0 && state.showBulkPanel ? 'flex' : 'none';
     }
 
+    /* ==========================================================
+     * ESCRITA DE DADOS (POST/PATCH) VIA SUPABASE
+     * ========================================================== */
     async function applyBulkUpdate() {
       if (!isEditorOrAdmin()) return;
       const newFase = document.getElementById('bulkFase').value;
@@ -955,40 +857,61 @@
 
       if (!newFase && !newSit) return alert('Selecione Fase ou Situação.');
 
-      const targets = Array.from(state.selectedIds);
-      const requests = [];
+      const patch = { responsavel: state.session.nome };
+      if (newFase) patch.fase = newFase;
+      if (newSit) patch.situacao = newSit;
 
-      targets.forEach(id => {
-        const item = state.nes.find(n => n.id === id);
-        if (!item) return;
-
-        if (newFase) item.fase = newFase;
-        if (newSit) item.situacao = newSit;
-        item.responsavel = state.session.nome;
-        item.atu = new Date().toLocaleDateString('pt-BR');
-
-        requests.push(sendNEToSheet('UPDATE', {
-          ID: item.id, ANO: item.ano, NE: item.ne, UG: item.ug, CATEGORIA: item.categoria,
-          TIPO: item.tipo, PROCESSO: item.processo, DESCRICAO: item.descricao,
-          UASG: item.uasg, SITUACAO: item.situacao, FASE: item.fase,
-          VALOR: item.valor, PUBLI: item.publi, RESPONSAVEL: item.responsavel, ATU: item.atu,
-          REQUESTER_ID: state.session.id
-        }));
-      });
-
-      // Envia todas as atualizações do lote em paralelo, em vez de uma
-      // por vez, o que reduz bastante o tempo total quando várias NEs
-      // são selecionadas.
-      await Promise.all(requests);
+      // Executa o update em lote nativo da API REST do Supabase
+      const { error } = await supabaseClient.from('empenhos').update(patch).in('id', Array.from(state.selectedIds));
+      
+      if (error) return alert('Erro ao atualizar: ' + error.message);
 
       state.selectedIds.clear();
       updateBulkPanel();
-      applyFilters();
-      updateDashboard();
-      renderCharts();
+      await fetchSheetData();
       alert('Ações concluídas!');
     }
 
+    async function saveNE(e) {
+      e.preventDefault();
+      if (!isEditorOrAdmin()) return;
+      const editId = document.getElementById('modalEditId').value;
+
+      // Monta o payload aderente aos nomes de coluna (minúsculas) do Supabase
+      const payload = {
+        ano: parseInt(document.getElementById('modalAno').value),
+        ne: document.getElementById('modalNE').value,
+        ug: document.getElementById('modalUGSelect').value,
+        categoria: document.getElementById('modalCategoria').value,
+        tipo: document.getElementById('modalTipo').value,
+        processo: document.getElementById('modalProcesso').value,
+        descricao: document.getElementById('modalDescricao').value,
+        uasg: document.getElementById('modalUASG').value,
+        situacao: document.getElementById('modalSituacao').value,
+        valor_total: parseFloat(document.getElementById('modalValor').value) || 0,
+        fase: document.getElementById('modalFase').value,
+        publi: document.getElementById('modalPubli').value || null,
+        responsavel: state.session.nome
+      };
+
+      const btn = document.querySelector('#neForm button[type="submit"]');
+      btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Salvando...';
+
+      const { error } = editId
+        ? await supabaseClient.from('empenhos').update(payload).eq('id', editId)
+        : await supabaseClient.from('empenhos').insert(payload);
+
+      btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-check"></i> Salvar Registros';
+
+      if (error) return alert('Erro ao salvar: ' + error.message);
+      
+      closeModal();
+      await fetchSheetData();
+    }
+
+    /* ==========================================================
+     * METAS E DANFES
+     * ========================================================== */
     function saveDanfeStock() {
       if (!isEditorOrAdmin()) return;
       const val = parseInt(document.getElementById('danfeStockInput').value) || 0;
@@ -1004,12 +927,7 @@
       const qty = parseInt(document.getElementById('danfeQtyLog').value) || 0;
       if (qty <= 0) return;
 
-      const log = {
-        data: new Date().toLocaleDateString('pt-BR'),
-        usuario: state.session.nome,
-        quantidade: qty
-      };
-
+      const log = { data: new Date().toLocaleDateString('pt-BR'), usuario: state.session.nome, quantidade: qty };
       state.danfeLogs.push(log);
       state.danfeStock = Math.max(0, state.danfeStock - qty);
       
@@ -1057,10 +975,12 @@
       for (const u in userTotals) {
         html += `<div style="display:flex; justify-between; font-size:0.85rem; padding: 6px 0; border-bottom: 1px solid var(--border-color);"><span><i class="fa-solid fa-user me-2 text-muted"></i>${u}</span><strong>${userTotals[u]} DANFEs</strong></div>`;
       }
-
       container.innerHTML = html;
     }
 
+    /* ==========================================================
+     * MODAIS DA INTERFACE
+     * ========================================================== */
     function openModal() {
       if (!isEditorOrAdmin()) return;
       document.getElementById('modalTitle').innerHTML = '<i class="fa-solid fa-file-invoice me-2"></i> Registrar Nova Nota de Empenho';
@@ -1099,111 +1019,11 @@
       document.getElementById('neModal').style.display = 'none';
     }
 
-    async function saveNE(e) {
-      e.preventDefault();
-      if (!isEditorOrAdmin()) return;
-
-      const editId = document.getElementById('modalEditId').value;
-      const actionType = editId ? 'UPDATE' : 'CREATE';
-
-      const payloadNE = {
-        ID: editId || undefined,
-        ANO: parseInt(document.getElementById('modalAno').value),
-        NE: document.getElementById('modalNE').value,
-        UG: document.getElementById('modalUGSelect').value,
-        CATEGORIA: document.getElementById('modalCategoria').value,
-        TIPO: document.getElementById('modalTipo').value,
-        PROCESSO: document.getElementById('modalProcesso').value,
-        DESCRICAO: document.getElementById('modalDescricao').value,
-        UASG: document.getElementById('modalUASG').value,
-        SITUACAO: document.getElementById('modalSituacao').value,
-        VALOR: parseFloat(document.getElementById('modalValor').value) || 0,
-        FASE: document.getElementById('modalFase').value,
-        PUBLI: document.getElementById('modalPubli').value,
-        RESPONSAVEL: state.session.nome,
-        ATU: document.getElementById('modalAtu').value,
-        REQUESTER_ID: state.session.id
-      };
-
-      const submitBtn = document.querySelector('#neForm button[type="submit"]');
-      submitBtn.disabled = true;
-      submitBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Salvando...';
-
-      const result = await sendNEToSheet(actionType, payloadNE);
-
-      submitBtn.disabled = false;
-      submitBtn.innerHTML = '<i class="fa-solid fa-check"></i> Salvar Registros';
-
-      if (!result) return;
-
-      // Atualização otimista: reflete o registro na tela imediatamente
-      // (sem esperar uma nova leitura completa da planilha), já que o
-      // servidor confirmou o sucesso da gravação. A sincronização
-      // periódica (a cada 15s) mantém tudo alinhado com outros dispositivos.
-      const itemLocal = {
-        id: editId || result.id,
-        ano: payloadNE.ANO,
-        ne: payloadNE.NE,
-        ug: payloadNE.UG,
-        categoria: payloadNE.CATEGORIA,
-        tipo: payloadNE.TIPO,
-        processo: formatProcessoText(payloadNE.PROCESSO),
-        descricao: payloadNE.DESCRICAO,
-        uasg: payloadNE.UASG,
-        situacao: payloadNE.SITUACAO,
-        fase: payloadNE.FASE,
-        valor: payloadNE.VALOR,
-        publi: formatDate(payloadNE.PUBLI),
-        responsavel: payloadNE.RESPONSAVEL,
-        atu: formatDate(payloadNE.ATU)
-      };
-
-      if (actionType === 'UPDATE') {
-        const idx = state.nes.findIndex(n => n.id === editId);
-        if (idx !== -1) state.nes[idx] = itemLocal;
-      } else {
-        state.nes.push(itemLocal);
-      }
-
-      closeModal();
-      populateColumnDropdowns();
-      populateUGSelect();
-      applyFilters();
-      updateDashboard();
-      renderCharts();
-    }
-
-    /**
-     * Grava uma NE (CREATE/UPDATE) e retorna o resultado do servidor
-     * (com "id" no caso de CREATE) ou null em caso de erro.
-     */
-    async function sendNEToSheet(actionType, neData) {
-      try {
-        const result = await postToSheet(actionType, neData);
-        if (result.status !== 'success') {
-          alert('Erro ao salvar: ' + (result.message || 'Falha desconhecida.'));
-          return null;
-        }
-        return result;
-      } catch (err) {
-        console.error(err);
-        alert('Erro de conexão ao gravar dados.');
-        return null;
-      }
-    }
-
     /* ==========================================================
      * SESSÃO / LOGIN / PERFIS DE ACESSO
-     * (perfis: 'admin', 'editor'; sem sessão = Público)
      * ========================================================== */
-
-    function isAdmin() {
-      return !!state.session && state.session.perfil === 'admin';
-    }
-
-    function isEditorOrAdmin() {
-      return !!state.session && (state.session.perfil === 'admin' || state.session.perfil === 'editor');
-    }
+    function isAdmin() { return !!state.session && state.session.perfil === 'admin'; }
+    function isEditorOrAdmin() { return !!state.session && (state.session.perfil === 'admin' || state.session.perfil === 'editor'); }
 
     function renderSessionUI() {
       const icon = document.getElementById('sessionIcon');
@@ -1232,50 +1052,35 @@
       document.getElementById('loginModal').style.display = 'flex';
     }
 
-    function closeLoginModal() {
-      document.getElementById('loginModal').style.display = 'none';
-    }
+    function closeLoginModal() { document.getElementById('loginModal').style.display = 'none'; }
 
     async function doLogin(e) {
-      if (e) e.preventDefault(); // Impede o formulário de recarregar a página
+      if (e) e.preventDefault();
       
-      // Correção dos IDs para mapear exatamente o HTML existente
-      const userField = document.getElementById('loginNome').value.trim();
+      const emailField = document.getElementById('loginNome').value.trim();
       const passField = document.getElementById('loginSenha').value;
 
-      if (!userField || !passField) {
-        alert("Preencha e-mail e senha.");
-        return;
-      }
+      if (!emailField || !passField) return alert("Preencha e-mail e senha.");
 
       try {
         const { data: authData, error: authError } = await supabaseClient.auth.signInWithPassword({
-          email: userField,
-          password: passField
+          email: emailField, password: passField
         });
-
-        if (authError) throw new Error("Credenciais inválidas.");
+        
+        if (authError) throw new Error(authError.message); // Expõe a real mensagem do Supabase
 
         const { data: profileData, error: profileError } = await supabaseClient
-          .from('perfis_usuario')
-          .select('nome, perfil')
-          .eq('id', authData.user.id)
-          .single();
-
-        if (profileError) throw new Error("Erro ao carregar perfil de permissões.");
-    
-        state.currentUser = {
-          id: authData.user.id,
-          nome: profileData.nome,
-          perfil: profileData.perfil
-        };
-
-        localStorage.setItem('empenhos_user', JSON.stringify(state.currentUser));
+          .from('perfis_usuario').select('nome, perfil').eq('id', authData.user.id).single();
         
+        if (profileError) throw new Error("Erro ao carregar perfil na tabela pública. Verifique se o UUID está lá.");
+
+        // Unificação do estado da sessão (corrigindo bug Crítico 2)
+        state.session = { id: authData.user.id, nome: profileData.nome, perfil: profileData.perfil };
+        localStorage.setItem('ne_session', JSON.stringify(state.session));
+
         closeLoginModal();
         applyPermissions();
-        fetchSheetData(); // Restabelece a busca imediata de dados pós-login
-    
+        fetchSheetData();
       } catch (error) {
         const errorDiv = document.getElementById('loginError');
         errorDiv.textContent = "Erro no login: " + error.message;
@@ -1284,45 +1089,34 @@
     }
 
     async function doLogout() {
-      await supabaseClient.auth.signOut(); // Usando supabaseClient
-      state.currentUser = null;
-      localStorage.removeItem('empenhos_user');
+      await supabaseClient.auth.signOut();
+      state.session = null;
+      localStorage.removeItem('ne_session');
       applyPermissions();
     }
 
     async function checkSession() {
       try {
-        // Usando supabaseClient
         const { data: { session }, error } = await supabaseClient.auth.getSession();
-        
         if (session && !error) {
-          const savedUser = localStorage.getItem('empenhos_user');
-          if (savedUser) {
-            state.currentUser = JSON.parse(savedUser);
-          }
+          const saved = localStorage.getItem('ne_session');
+          if (saved) state.session = JSON.parse(saved);
         } else {
-          state.currentUser = null;
-          localStorage.removeItem('empenhos_user');
+          state.session = null;
+          localStorage.removeItem('ne_session');
         }
       } catch (err) {
         console.error("Erro ao checar sessão:", err);
-        state.currentUser = null;
+        state.session = null;
       }
-      
       applyPermissions();
+      fetchSheetData();
     }
       
-    /**
-     * Mostra/oculta abas e botões conforme o perfil ativo:
-     * Público → só visualiza e filtra; Editor → também cadastra NE e usa Metas;
-     * Admin → tudo, incluindo a aba Configurações (gestão de usuários).
-     */
     function applyPermissions() {
       const editorOuAdmin = isEditorOrAdmin();
-      const admin = isAdmin();
 
       document.getElementById('navMetas').style.display = editorOuAdmin ? '' : 'none';
-      document.getElementById('navConfig').style.display = admin ? '' : 'none';
       document.getElementById('btnNovaNE').style.display = editorOuAdmin ? '' : 'none';
       document.getElementById('btnAcoesEditar').style.display = editorOuAdmin ? '' : 'none';
 
@@ -1334,119 +1128,23 @@
 
       const activeTab = document.querySelector('.tab-content.active');
       if (activeTab) {
-        const perdeuAcessoMetas = activeTab.id === 'tab-metas' && !editorOuAdmin;
-        const perdeuAcessoConfig = activeTab.id === 'tab-config' && !admin;
-        if (perdeuAcessoMetas || perdeuAcessoConfig) {
+        if (activeTab.id === 'tab-metas' && !editorOuAdmin) {
           switchTab('tab-dashboard', document.querySelector('nav button'));
         }
       }
       
-      // Essencial: desenha o botão de "Entrar" ou o card do usuário na barra lateral
+      // Essencial: renderiza a UI lateral dependendo se está logado ou não
       renderSessionUI();
-    }
-
-    /* ---------- Painel de administração de usuários (aba Configurações) ---------- */
-
-    function renderUsersAdminPanel() {
-      const container = document.getElementById('usersContainer');
-      if (!container) return;
-      container.innerHTML = '';
-
-      state.users.forEach(user => {
-        const perfilLabel = user.perfil === 'admin' ? 'Administrador' : 'Editor';
-        container.innerHTML += `
-          <div class="user-item">
-            <div class="user-item-info">
-              <i class="fa-solid fa-user-gear text-muted" style="font-size: 1.1rem;"></i>
-              <div>
-                <strong>${user.nome}</strong>
-                <div style="font-size:0.75rem; color:var(--text-muted);">${perfilLabel}</div>
-              </div>
-            </div>
-            <div style="display: flex; gap: 8px;">
-              <button class="btn btn-secondary" style="font-size:0.75rem; padding: 6px 12px;" onclick="editUser('${user.id}')" title="Editar"><i class="fa-solid fa-pen"></i></button>
-              <button class="btn btn-secondary" style="font-size:0.75rem; padding: 6px 12px;" onclick="resetUserPassword('${user.id}')" title="Redefinir senha"><i class="fa-solid fa-key"></i></button>
-              <button class="btn btn-secondary" style="font-size:0.75rem; padding: 6px 12px; color:var(--badge-publicar-text);" onclick="removeUser('${user.id}')" title="Remover"><i class="fa-solid fa-trash"></i></button>
-            </div>
-          </div>
-        `;
-      });
-    }
-
-    async function addUser() {
-      if (!isAdmin()) return;
-      const nome = document.getElementById('newUserNameInput').value.trim();
-      const senha = document.getElementById('newUserPassInput').value;
-      const perfil = document.getElementById('newUserProfileInput').value;
-
-      if (!nome || !senha) return alert('Preencha nome e senha.');
-
-      const result = await postToSheet('ADD_USER', { nome, senha, perfil, requesterId: state.session.id });
-      if (result.status === 'success') {
-        document.getElementById('newUserNameInput').value = '';
-        document.getElementById('newUserPassInput').value = '';
-        setTimeout(fetchSheetData, 500);
-      } else {
-        alert('Erro: ' + result.message);
-      }
-    }
-
-    async function editUser(id) {
-      if (!isAdmin()) return;
-      const user = state.users.find(u => u.id === id);
-      if (!user) return;
-
-      const newName = prompt('Nome do usuário:', user.nome);
-      if (newName === null) return;
-      const newProfile = prompt('Perfil ("admin" ou "editor"):', user.perfil);
-      if (newProfile === null) return;
-      if (!['admin', 'editor'].includes(newProfile)) return alert('Perfil inválido. Use "admin" ou "editor".');
-
-      const result = await postToSheet('UPDATE_USER', { id, nome: newName.trim(), perfil: newProfile, requesterId: state.session.id });
-      if (result.status === 'success') {
-        setTimeout(fetchSheetData, 500);
-      } else {
-        alert('Erro: ' + result.message);
-      }
-    }
-
-    async function resetUserPassword(id) {
-      if (!isAdmin()) return;
-      const novaSenha = prompt('Digite a nova senha para este usuário:');
-      if (!novaSenha) return;
-
-      const result = await postToSheet('UPDATE_PASSWORD', { id, novaSenha, requesterId: state.session.id });
-      if (result.status === 'success') {
-        alert('Senha redefinida com sucesso!');
-      } else {
-        alert('Erro: ' + result.message);
-      }
-    }
-
-    async function removeUser(id) {
-      if (!isAdmin()) return;
-      const user = state.users.find(u => u.id === id);
-      if (!user) return;
-      if (!confirm(`Remover usuário "${user.nome}"?`)) return;
-
-      const result = await postToSheet('REMOVE_USER', { id, requesterId: state.session.id });
-      if (result.status === 'success') {
-        if (state.session && state.session.id === id) doLogout();
-        setTimeout(fetchSheetData, 500);
-      } else {
-        alert('Erro: ' + result.message);
-      }
     }
 
     function updateSyncStatus(status, message) {
       const el = document.getElementById('syncIndicator');
-      
       if (status === 'synced') {
         el.innerHTML = `<i class="fa-solid fa-circle-check"></i> ${message}`;
         el.className = 'sync-status status-online';
       } else if (status === 'syncing') {
         el.innerHTML = `<i class="fa-solid fa-rotate fa-spin"></i> ${message}`;
-        el.className = 'sync-status status-online'; // Mantém o estilo base mas com ícone giratório
+        el.className = 'sync-status status-online';
       } else {
         el.innerHTML = `<i class="fa-solid fa-circle-xmark"></i> ${message}`;
         el.className = 'sync-status status-offline';
