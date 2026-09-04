@@ -658,7 +658,11 @@
           valor: Number(row.valor_total),
           publi: formatDate(row.publi),
           responsavel: row.responsavel || '',
-          atu: formatDate(row.atu)
+          atu: formatDate(row.atu),
+          danfe_liquidacao: row.danfe_liquidacao || false,
+          danfe_liquidacao_data: row.danfe_liquidacao_data || null,
+          danfe_pagamento: row.danfe_pagamento || false,
+          danfe_pagamento_data: row.danfe_pagamento_data || null
         }));
 
         populateUGSelect();
@@ -666,9 +670,9 @@
         applyFilters();
         updateDashboard();
         renderCharts();
-        updateSyncStatus('synced', 'Sincronizado com Supabase');
+        updateSyncStatus('synced', 'Dados Sincronizados');
       } catch (error) {
-        console.error("Erro ao buscar dados do Supabase:", error);
+        console.error("Erro ao buscar dados na Base:", error);
         updateSyncStatus('error', 'Erro na sincronização');
       }
     }
@@ -824,6 +828,36 @@
 
       const { error } = await supabaseClient.from('empenhos').delete().eq('id', id);
       if (error) return alert('Erro ao excluir registro: ' + error.message);
+
+      await fetchSheetData();
+    }
+
+    async function toggleDanfeStatus(id, tipoDanfe) {
+      if (!isEditorOrAdmin()) return;
+      const item = state.nes.find(n => n.id === id);
+      if (!item) return;
+
+      let patch = {};
+      const today = new Date().toISOString().split('T')[0];
+
+      if (tipoDanfe === 'liquidacao') {
+        const status = !item.danfe_liquidacao;
+        patch = { danfe_liquidacao: status, danfe_liquidacao_data: status ? today : null };
+        // Se desmarcar liquidação, desmarca pagamento automaticamente por regra de dependência
+        if (!status) {
+          patch.danfe_pagamento = false;
+          patch.danfe_pagamento_data = null;
+        }
+      } else if (tipoDanfe === 'pagamento') {
+        if (!item.danfe_liquidacao) {
+          return alert('A DANFE de liquidação deve ser registrada antes do pagamento.');
+        }
+        const status = !item.danfe_pagamento;
+        patch = { danfe_pagamento: status, danfe_pagamento_data: status ? today : null };
+      }
+
+      const { error } = await supabaseClient.from('empenhos').update(patch).eq('id', id);
+      if (error) return alert('Erro ao atualizar status da DANFE: ' + error.message);
 
       await fetchSheetData();
     }
@@ -1156,6 +1190,17 @@
 
     function renderDanfeMetrics() {
       const container = document.getElementById('danfePerformanceMetrics');
+      
+      // Contadores derivados da base real do Supabase
+      const nesPendentesPublicacao = state.nes.filter(n => n.situacao === 'Publicar').length;
+      const nesLiquidadasOuPagas = state.nes.filter(n => n.fase === 'Liquidado' || n.fase === 'Pago');
+      const danfesPendentesDspace = nesLiquidadasOuPagas.filter(n => !n.danfe_liquidacao || !n.danfe_pagamento).length;
+      
+      // Cálculo de Saldo Financeiro Pendente
+      const valorTotalPendente = nesLiquidadasOuPagas
+        .filter(n => !n.danfe_pagamento)
+        .reduce((acc, curr) => acc + (curr.valor || 0), 0);
+
       const userTotals = {};
       let grandTotal = 0;
 
@@ -1165,28 +1210,33 @@
       });
 
       const avgDaily = state.danfeLogs.length > 0 ? (grandTotal / state.danfeLogs.length).toFixed(1) : 0;
-      const daysToZero = avgDaily > 0 ? Math.ceil(state.danfeStock / avgDaily) : '∞';
+      const daysToZeroFolder = avgDaily > 0 ? Math.ceil(state.danfeStock / avgDaily) : '∞';
+      const daysToZeroDspace = avgDaily > 0 ? Math.ceil(danfesPendentesDspace / avgDaily) : '∞';
 
       let html = `
-        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 20px;">
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 15px; margin-bottom: 20px;">
           <div style="padding: 12px; border-radius: 8px; background: rgba(0,0,0,0.15);">
-            <div style="font-size:0.75rem; color:var(--text-muted);">PDFs Pendentes em Pasta</div>
-            <div style="font-size: 1.4rem; font-weight:700;">${state.danfeStock}</div>
+            <div style="font-size:0.75rem; color:var(--text-muted);">NEs Pendentes de Publicação</div>
+            <div style="font-size: 1.4rem; font-weight:700; color:var(--badge-publicar-text);">${nesPendentesPublicacao} NEs</div>
           </div>
           <div style="padding: 12px; border-radius: 8px; background: rgba(0,0,0,0.15);">
-            <div style="font-size:0.75rem; color:var(--text-muted);">Média Diária Equipe</div>
-            <div style="font-size: 1.4rem; font-weight:700;">${avgDaily} / dia</div>
+            <div style="font-size:0.75rem; color:var(--text-muted);">DANFEs Pendentes (DSpace)</div>
+            <div style="font-size: 1.4rem; font-weight:700; color:#f87171;">${danfesPendentesDspace} DANFEs</div>
           </div>
           <div style="padding: 12px; border-radius: 8px; background: rgba(0,0,0,0.15);">
-            <div style="font-size:0.75rem; color:var(--text-muted);">Previsão de Quitação</div>
-            <div style="font-size: 1.4rem; font-weight:700; color:var(--accent);">${daysToZero} dias</div>
+            <div style="font-size:0.75rem; color:var(--text-muted);">Passivo Financeiro sem DANFE</div>
+            <div style="font-size: 1.4rem; font-weight:700; color:var(--accent);">R$ ${valorTotalPendente.toLocaleString('pt-BR', {minimumFractionDigits: 2})}</div>
+          </div>
+          <div style="padding: 12px; border-radius: 8px; background: rgba(0,0,0,0.15);">
+            <div style="font-size:0.75rem; color:var(--text-muted);">Previsão Quitação (Pasta Local)</div>
+            <div style="font-size: 1.4rem; font-weight:700;">${daysToZeroFolder} dias</div>
           </div>
         </div>
-        <h4 style="font-size:0.85rem; margin-bottom:10px; color:var(--text-muted);">Produção Total por Usuário:</h4>
+        <h4 style="font-size:0.85rem; margin-bottom:10px; color:var(--text-muted);">Produção Registrada pela Equipe:</h4>
       `;
 
       for (const u in userTotals) {
-        html += `<div style="display:flex; justify-between; font-size:0.85rem; padding: 6px 0; border-bottom: 1px solid var(--border-color);"><span><i class="fa-solid fa-user me-2 text-muted"></i>${u}</span><strong>${userTotals[u]} DANFEs</strong></div>`;
+        html += `<div style="display:flex; justify-content:space-between; font-size:0.85rem; padding: 6px 0; border-bottom: 1px solid var(--border-color);"><span><i class="fa-solid fa-user me-2 text-muted"></i>${u}</span><strong>${userTotals[u]} DANFEs</strong></div>`;
       }
       container.innerHTML = html;
     }
