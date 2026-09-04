@@ -20,6 +20,7 @@
       --bg-card: rgba(30, 41, 59, 0.7);
       --bg-card-hover: rgba(51, 65, 85, 0.8);
       --bg-sidebar: #090d16;
+      --bg-thead: #090d16;
       --border-color: rgba(255, 255, 255, 0.08);
       --text-main: #f8fafc;
       --text-muted: #94a3b8;
@@ -38,6 +39,7 @@
       --bg-card: rgba(255, 255, 255, 0.8);
       --bg-card-hover: rgba(241, 245, 249, 0.9);
       --bg-sidebar: #0f172a;
+      --bg-thead: #e2e8f0;
       --border-color: rgba(0, 0, 0, 0.08);
       --text-main: #0f172a;
       --text-muted: #64748b;
@@ -53,6 +55,12 @@
 
     * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Inter', sans-serif; transition: background-color 0.2s, border-color 0.2s, width 0.3s ease; }
     body { background-color: var(--bg-main); color: var(--text-main); display: flex; min-height: 100vh; overflow-x: hidden; }
+
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: rgba(148, 163, 184, 0.2); border-radius: 10px; }
+    ::-webkit-scrollbar-thumb:hover { background: rgba(148, 163, 184, 0.6); }
+    * { scrollbar-width: thin; scrollbar-color: rgba(148, 163, 184, 0.2) transparent; }
 
     .glass {
       background: var(--bg-card);
@@ -163,7 +171,7 @@
       position: sticky; 
       top: 0; 
       z-index: 10; 
-      background: #090d16; 
+      background: var(--bg-thead); 
       box-shadow: 0 1px 0 var(--border-color); 
     }
 
@@ -238,6 +246,7 @@
         <li><button class="active" onclick="switchTab('tab-dashboard', this)"><i class="fa-solid fa-chart-pie"></i> <span>Visão Geral</span></button></li>
         <li><button onclick="switchTab('tab-tabela', this)"><i class="fa-solid fa-table-list"></i> <span>Planilha Empenhos</span></button></li>
         <li id="navMetas"><button onclick="switchTab('tab-metas', this)"><i class="fa-solid fa-bullseye"></i> <span>Metas & Desempenho</span></button></li>
+        <li id="navFeedback"><button onclick="switchTab('tab-feedback', this)"><i class="fa-solid fa-comment-dots"></i> <span>Suporte & Feedback</span></button></li>
       </ul>
     </nav>
   </aside>
@@ -460,7 +469,28 @@
         <div id="danfePerformanceMetrics"></div>
       </div>
     </section>
-
+    
+    <section id="tab-feedback" class="tab-content">
+      <div class="glass controls-card" style="max-width: 600px; margin: 0 auto; padding: 25px;">
+        <h3 style="margin-bottom: 15px; font-size: 1.1rem; display: flex; align-items: center; gap: 8px;"><i class="fa-solid fa-bug text-primary"></i> Registrar Melhoria ou Bug</h3>
+        <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 20px;">Utilize este canal para reportar erros no sistema ou sugerir novas funcionalidades.</p>
+        <form onsubmit="submitFeedback(event)">
+          <div style="margin-bottom: 15px;">
+            <label style="font-size: 0.75rem; font-weight: 600;">TIPO DE REGISTRO</label>
+            <select id="feedbackTipo" required style="width: 100%; margin-top: 6px;">
+              <option value="Bug">Problema / Bug</option>
+              <option value="Melhoria">Sugestão de Melhoria</option>
+            </select>
+          </div>
+          <div style="margin-bottom: 20px;">
+            <label style="font-size: 0.75rem; font-weight: 600;">DESCRIÇÃO DETALHADA</label>
+            <textarea id="feedbackDescricao" required rows="5" placeholder="Descreva o que aconteceu ou o que poderia ser melhorado..." style="width: 100%; margin-top: 6px; padding: 12px; border: 1px solid var(--border-color); border-radius: 8px; font-size: 0.85rem; background: var(--bg-card); color: var(--text-main); resize: vertical;"></textarea>
+          </div>
+          <button type="submit" class="btn btn-accent" style="width: 100%; padding: 12px;"><i class="fa-solid fa-paper-plane"></i> Enviar Feedback</button>
+        </form>
+      </div>
+    </section>
+  
   </main>
 
   <div id="neModal" class="modal-backdrop">
@@ -614,8 +644,8 @@
     let chartsInstance = {};
 
     const EXTENDED_PALETTE = [
-      '#10b981', '#3b82f6', '#f59e0b', '#8b5cf6', '#06b6d4', '#ec4899', 
-      '#84cc16', '#f97316', '#14b8a6', '#6366f1', '#e11d48', '#64748b'
+      '#6366f1', '#8b5cf6', '#ec4899', '#f43f5e', '#f97316', '#f59e0b',
+      '#84cc16', '#10b981', '#14b8a6', '#06b6d4', '#0ea5e9', '#3b82f6'
     ];
 
     const state = {
@@ -934,10 +964,32 @@
         const ctx = document.getElementById(ctxId).getContext('2d');
         chartsInstance[ctxId] = new Chart(ctx, {
           type: type,
-          data: { labels: labels, datasets: [{ data: data, backgroundColor: colors, borderWidth: 0 }] },
-          options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { labels: { color: textColor, font: { family: 'Inter' } } } } }
+          data: { labels: labels, datasets: [{ data: data, backgroundColor: colors, borderWidth: 0, borderRadius: type === 'bar' ? 4 : 0 }] },
+          options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { labels: { color: textColor, font: { family: 'Inter' } } } }, scales: type === 'bar' ? { x: { ticks: { color: textColor } }, y: { ticks: { color: textColor } } } : {} }
         });
       };
+
+      const sanitize = (val) => (!val || val === 'undefined') ? 'Não Informado' : val;
+
+      const pubCount = state.nes.filter(n => n.situacao === 'Publicado').length;
+      const pendCount = state.nes.filter(n => n.situacao === 'Publicar').length;
+      createOrUpdate('chartSituacao', 'doughnut', ['Publicado', 'Publicar'], [pubCount, pendCount], ['#10b981', '#f59e0b']);
+
+      const fasesListRaw = [...new Set(state.nes.map(n => sanitize(n.fase)))];
+      const fasesData = fasesListRaw.map(f => state.nes.filter(n => sanitize(n.fase) === f).length);
+      const fasesColors = fasesListRaw.map((_, idx) => EXTENDED_PALETTE[idx % EXTENDED_PALETTE.length]);
+      createOrUpdate('chartFases', 'bar', fasesListRaw, fasesData, fasesColors);
+
+      const ugs = [...new Set(state.nes.map(n => sanitize(n.ug)))];
+      const ugData = ugs.map(u => state.nes.filter(n => sanitize(n.ug) === u && n.situacao === 'Publicar').length);
+      const ugColors = ugs.map((_, idx) => EXTENDED_PALETTE[idx % EXTENDED_PALETTE.length]);
+      createOrUpdate('chartUG', 'bar', ugs, ugData, ugColors);
+
+      const cats = [...new Set(state.nes.map(n => sanitize(n.categoria)))];
+      const catData = cats.map(c => state.nes.filter(n => sanitize(n.categoria) === c).length);
+      const catColors = cats.map((_, idx) => EXTENDED_PALETTE[idx % EXTENDED_PALETTE.length]);
+      createOrUpdate('chartCategoria', 'pie', cats, catData, catColors);
+    }
 
       const pubCount = state.nes.filter(n => n.situacao === 'Publicado').length;
       const pendCount = state.nes.filter(n => n.situacao === 'Publicar').length;
@@ -1334,7 +1386,10 @@
       const daysToZeroFolder = avgDaily > 0 ? Math.ceil(state.danfeStock / avgDaily) : '∞';
 
       let logTableHtml = `
-        <h4 style="font-size:0.85rem; margin-top:20px; margin-bottom:10px; color:var(--text-muted);">Histórico de Produção (Log Diário):</h4>
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-top:20px; margin-bottom:10px;">
+          <h4 style="font-size:0.85rem; color:var(--text-muted); margin:0;">Histórico de Produção (Log Diário):</h4>
+          ${isAdmin() ? `<button class="btn btn-secondary" style="padding:4px 8px; font-size:0.7rem; color:#f87171; border-color: rgba(239,68,68,0.3);" onclick="clearDanfeLogs()"><i class="fa-solid fa-trash"></i> Limpar Log</button>` : ''}
+        </div>
         <div class="table-container" style="max-height: 250px; overflow-y: auto; background: rgba(0,0,0,0.15); border-radius: 8px; border: 1px solid var(--border-color);">
           <table style="width: 100%; border-collapse: collapse; font-size: 0.8rem;">
             <thead>
@@ -1363,27 +1418,40 @@
       }
       logTableHtml += `</tbody></table></div>`;
 
-      container.innerHTML = `
-        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 15px; margin-bottom: 20px;">
-          <div style="padding: 12px; border-radius: 8px; background: rgba(0,0,0,0.15);">
-            <div style="font-size:0.75rem; color:var(--text-muted);">NEs Pendentes de Publicação</div>
-            <div style="font-size: 1.4rem; font-weight:700; color:var(--badge-publicar-text);">${nesPendentesPublicacao} NEs</div>
-          </div>
-          <div style="padding: 12px; border-radius: 8px; background: rgba(0,0,0,0.15);">
-            <div style="font-size:0.75rem; color:var(--text-muted);">DANFEs Pendentes (DSpace)</div>
-            <div style="font-size: 1.4rem; font-weight:700; color:#f87171;">${danfesPendentesDspace} DANFEs</div>
-          </div>
-          <div style="padding: 12px; border-radius: 8px; background: rgba(0,0,0,0.15);">
-            <div style="font-size:0.75rem; color:var(--text-muted);">Passivo Financeiro sem DSpace</div>
-            <div style="font-size: 1.4rem; font-weight:700; color:var(--accent);">R$ ${valorTotalPendente.toLocaleString('pt-BR', {minimumFractionDigits: 2})}</div>
-          </div>
-          <div style="padding: 12px; border-radius: 8px; background: rgba(0,0,0,0.15);">
-            <div style="font-size:0.75rem; color:var(--text-muted);">Previsão Quitação (Pasta Local)</div>
-            <div style="font-size: 1.4rem; font-weight:700;">${daysToZeroFolder} dias</div>
-          </div>
-        </div>
-        ${logTableHtml}
-      `;
+      }
+      container.innerHTML = html;
+    }
+
+    function clearDanfeLogs() {
+      if (!isAdmin()) return;
+      if (!confirm("Tem certeza que deseja apagar todo o histórico local de produção?")) return;
+      state.danfeLogs = [];
+      localStorage.removeItem('ne_danfe_logs');
+      renderDanfeMetrics();
+    }
+
+    async function submitFeedback(e) {
+      e.preventDefault();
+      if (!isEditorOrAdmin()) return;
+      const btn = e.target.querySelector('button[type="submit"]');
+      const tipo = document.getElementById('feedbackTipo').value;
+      const desc = document.getElementById('feedbackDescricao').value;
+      
+      btn.disabled = true;
+      btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Enviando...';
+
+      const payload = { tipo: tipo, descricao: desc, usuario: state.session.nome };
+      const { error } = await supabaseClient.from('feedbacks').insert(payload);
+      
+      btn.disabled = false;
+      btn.innerHTML = '<i class="fa-solid fa-paper-plane"></i> Enviar Feedback';
+
+      if (error) {
+        alert('Erro ao enviar feedback. Certifique-se de que a tabela "feedbacks" foi criada no Supabase. Erro: ' + error.message);
+      } else {
+        alert('Feedback enviado com sucesso! Obrigado pela contribuição.');
+        e.target.reset();
+      }
     }
 
     /* ==========================================================
@@ -1589,8 +1657,8 @@
     function applyPermissions() {
       const editorOuAdmin = isEditorOrAdmin();
       document.getElementById('navMetas').style.display = editorOuAdmin ? '' : 'none';
+      document.getElementById('navFeedback').style.display = editorOuAdmin ? '' : 'none';
       document.getElementById('btnNovaNE').style.display = editorOuAdmin ? '' : 'none';
-      document.getElementById('btnAcoesEditar').style.display = editorOuAdmin ? '' : 'none';
 
       if (!editorOuAdmin) {
         state.showBulkPanel = false;
