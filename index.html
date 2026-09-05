@@ -657,10 +657,38 @@
         chartsInstance[ctxId] = new Chart(ctx, {
           type: type,
           data: { labels: labels, datasets: [{ data: data, backgroundColor: colors, borderWidth: 0, borderRadius: type === 'bar' ? 4 : 0 }] },
-          options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { labels: { color: textColor, font: { family: 'Inter' } } } }, scales: type === 'bar' ? { x: { ticks: { color: textColor } }, y: { ticks: { color: textColor } } } : {} }
+          options: { 
+            responsive: true, 
+            maintainAspectRatio: false, 
+            plugins: { legend: { labels: { color: textColor, font: { family: 'Inter' } } } }, 
+            scales: type === 'bar' ? { x: { ticks: { color: textColor } }, y: { ticks: { color: textColor } } } : {} 
+          }
         });
       };
 
+      const sanitize = (val) => (!val || val === 'undefined') ? 'Não Informado' : val;
+
+      const pubCount = state.nes.filter(n => n.situacao === 'Publicado').length;
+      const pendCount = state.nes.filter(n => n.situacao === 'Publicar').length;
+      createOrUpdate('chartSituacao', 'doughnut', ['Publicado', 'Publicar'], [pubCount, pendCount], ['#10b981', '#f59e0b']);
+
+      const fasesListRaw = [...new Set(state.nes.map(n => sanitize(n.fase)))];
+      const fasesData = fasesListRaw.map(f => state.nes.filter(n => sanitize(n.fase) === f).length);
+      const fasesColors = fasesListRaw.map((_, idx) => EXTENDED_PALETTE[idx % EXTENDED_PALETTE.length]);
+      createOrUpdate('chartFases', 'bar', fasesListRaw, fasesData, fasesColors);
+
+      const ugs = [...new Set(state.nes.map(n => sanitize(n.ug)))];
+      const ugData = ugs.map(u => state.nes.filter(n => sanitize(n.ug) === u && n.situacao === 'Publicar').length);
+      const ugColors = ugs.map((_, idx) => EXTENDED_PALETTE[idx % EXTENDED_PALETTE.length]);
+      createOrUpdate('chartUG', 'bar', ugs, ugData, ugColors);
+
+      const cats = [...new Set(state.nes.map(n => sanitize(n.categoria)))];
+      const catData = cats.map(c => state.nes.filter(n => sanitize(n.categoria) === c).length);
+      const catColors = cats.map((_, idx) => EXTENDED_PALETTE[idx % EXTENDED_PALETTE.length]);
+      createOrUpdate('chartCategoria', 'pie', cats, catData, catColors);
+    }
+
+    function renderTable(data) {
       const sanitize = (val) => (!val || val === 'undefined') ? 'Não Informado' : val;
 
       const pubCount = state.nes.filter(n => n.situacao === 'Publicado').length;
@@ -1132,8 +1160,27 @@
       }
       logTableHtml += `</tbody></table></div>`;
 
-      }
-      container.innerHTML = html;
+      container.innerHTML = `
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 15px; margin-bottom: 20px;">
+          <div style="padding: 12px; border-radius: 8px; background: rgba(0,0,0,0.15);">
+            <div style="font-size:0.75rem; color:var(--text-muted);">NEs Pendentes de Publicação</div>
+            <div style="font-size: 1.4rem; font-weight:700; color:var(--badge-publicar-text);">${nesPendentesPublicacao} NEs</div>
+          </div>
+          <div style="padding: 12px; border-radius: 8px; background: rgba(0,0,0,0.15);">
+            <div style="font-size:0.75rem; color:var(--text-muted);">DANFEs Pendentes (DSpace)</div>
+            <div style="font-size: 1.4rem; font-weight:700; color:#f87171;">${danfesPendentesDspace} DANFEs</div>
+          </div>
+          <div style="padding: 12px; border-radius: 8px; background: rgba(0,0,0,0.15);">
+            <div style="font-size:0.75rem; color:var(--text-muted);">Passivo Financeiro sem DSpace</div>
+            <div style="font-size: 1.4rem; font-weight:700; color:var(--accent);">R$ ${valorTotalPendente.toLocaleString('pt-BR', {minimumFractionDigits: 2})}</div>
+          </div>
+          <div style="padding: 12px; border-radius: 8px; background: rgba(0,0,0,0.15);">
+            <div style="font-size:0.75rem; color:var(--text-muted);">Previsão Quitação (Pasta Local)</div>
+            <div style="font-size: 1.4rem; font-weight:700;">${daysToZeroFolder} dias</div>
+          </div>
+        </div>
+        ${logTableHtml}
+      `;
     }
 
     function clearDanfeLogs() {
