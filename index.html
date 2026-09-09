@@ -1307,35 +1307,130 @@
     }
 
     /* ==========================================================
-     * METAS E MÉTRICAS
+     * METAS E MÉTRICAS (PERSISTÊNCIA SUPABASE)
      * ========================================================== */
-    function saveDanfeStock() {
-      if (!isEditorOrAdmin()) return;
-      const val = parseInt(document.getElementById('danfeStockInput').value) || 0;
-      state.danfeStock = val;
-      localStorage.setItem('ne_danfe_stock', val);
-      renderDanfeMetrics();
-      alert('Estoque de DANFEs atualizado!');
+    async function loadDanfeMetrics() {
+      try {
+        const { data, error } = await supabaseClient
+          .from('metas_producao')
+          .select('*')
+          .order('created_at', { ascending: true }); // Ordena do mais antigo para o mais novo
+
+        if (error) throw error;
+
+        state.danfeLogs = [];
+        let currentStock = 0;
+
+        if (data && data.length > 0) {
+          data.forEach(item => {
+            if (item.quantidade_publicada > 0) {
+              state.danfeLogs.push({
+                data: new Date(item.created_at).toLocaleDateString('pt-BR'),
+                usuario: item.usuario_nome,
+                quantidade: item.quantidade_publicada
+              });
+            }
+          });
+          // O estoque atual será o saldo da última movimentação registrada
+          currentStock = data[data.length - 1].pasta_local_saldo || 0;
+        }
+
+        state.danfeStock = currentStock;
+        const stockInput = document.getElementById('danfeStockInput');
+        if (stockInput) stockInput.value = currentStock;
+
+        renderDanfeMetrics();
+      } catch (err) {
+        console.error('Erro ao carregar metas e log de produção:', err);
+      }
     }
 
-    function logDanfeProduction(e) {
+    async function saveDanfeStock() {
+      if (!isEditorOrAdmin()) return;
+      const val = parseInt(document.getElementById('danfeStockInput').value) || 0;
+      
+      const payload = {
+        usuario_nome: state.session.nome,
+        pasta_local_saldo: val,
+        quantidade_publicada: 0,
+        tipo_registro: 'SALDO_INICIAL'
+      };
+
+      const { error } = await supabaseClient.from('metas_producao').insert([payload]);
+
+      if (error) {
+        alert('Erro ao salvar estoque no banco: ' + error.message);
+        return;
+      }
+
+      state.danfeStock = val;
+      renderDanfeMetrics();
+      alert('Estoque de DANFEs atualizado na nuvem!');
+    }
+
+    async function logDanfeProduction(e) {
       e.preventDefault();
       if (!isEditorOrAdmin()) return;
       const qty = parseInt(document.getElementById('danfeQtyLog').value) || 0;
       if (qty <= 0) return;
 
+      const btn = e.target.querySelector('button[type="submit"]') || e.target;
+      const originalHtml = btn.innerHTML;
+      btn.disabled = true;
+      btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Registrando...';
+
+      const newStock = Math.max(0, state.danfeStock - qty);
+      
+      const payload = {
+        usuario_nome: state.session.nome,
+        pasta_local_saldo: newStock,
+        quantidade_publicada: qty,
+        tipo_registro: 'TURNO'
+      };
+
+      const { error } = await supabaseClient.from('metas_producao').insert([payload]);
+      
+      btn.disabled = false;
+      btn.innerHTML = originalHtml;
+
+      if (error) {
+        alert('Erro ao registrar produção no banco: ' + error.message);
+        return;
+      }
+
+      // Atualiza o estado local para evitar nova requisição ao banco
       const log = { data: new Date().toLocaleDateString('pt-BR'), usuario: state.session.nome, quantidade: qty };
       state.danfeLogs.push(log);
-      state.danfeStock = Math.max(0, state.danfeStock - qty);
-      
-      localStorage.setItem('ne_danfe_logs', JSON.stringify(state.danfeLogs));
-      localStorage.setItem('ne_danfe_stock', state.danfeStock);
+      state.danfeStock = newStock;
       
       document.getElementById('danfeStockInput').value = state.danfeStock;
       document.getElementById('danfeQtyLog').value = '';
       
       renderDanfeMetrics();
       alert('Produção registrada com sucesso!');
+    }
+
+    async function clearDanfeLogs() {
+      if (!isAdmin()) return;
+      if (!confirm("Tem certeza que deseja apagar todo o histórico de produção do banco para toda a equipe?")) return;
+      
+      try {
+        const { error } = await supabaseClient
+          .from('metas_producao')
+          .delete()
+          .neq('tipo_registro', 'INDEFINIDO'); // Truque de SQL para apagar todas as linhas
+          
+        if (error) throw error;
+
+        state.danfeLogs = [];
+        state.danfeStock = 0;
+        document.getElementById('danfeStockInput').value = state.danfeStock;
+        renderDanfeMetrics();
+        alert('Histórico reiniciado com sucesso!');
+      } catch (err) {
+        console.error('Erro ao limpar log:', err);
+        alert('Erro ao limpar o banco: ' + err.message);
+      }
     }
 
     function renderDanfeMetrics() {
@@ -1420,14 +1515,6 @@
         </div>
         ${logTableHtml}
       `;
-    }
-
-    function clearDanfeLogs() {
-      if (!isAdmin()) return;
-      if (!confirm("Tem certeza que deseja apagar todo o histórico local de produção?")) return;
-      state.danfeLogs = [];
-      localStorage.removeItem('ne_danfe_logs');
-      renderDanfeMetrics();
     }
 
     async function submitFeedback(e) {
@@ -1622,6 +1709,7 @@
         closeLoginModal();
         applyPermissions();
         fetchSheetData();
+        if (isEditorOrAdmin()) loadDanfeMetrics();
       } catch (error) {
         const errorDiv = document.getElementById('loginError');
         errorDiv.textContent = "Erro no login: " + error.message;
@@ -1652,6 +1740,7 @@
       }
       applyPermissions();
       fetchSheetData();
+      if (isEditorOrAdmin()) loadDanfeMetrics();
     }
       
     function applyPermissions() {
