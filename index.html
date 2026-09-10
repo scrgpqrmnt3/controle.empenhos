@@ -81,17 +81,17 @@
       z-index: 100;
     }
 
-/* Adicionada transição suave e expansão atrelada estritamente ao hover no nav */
+/* Transição suave e expansão controlada via JS (hover-expanded) */
     aside.collapsed { width: 75px; transition: width 0.3s ease; }
-    aside.collapsed:has(nav:hover) { width: 260px; }
+    aside.collapsed.hover-expanded { width: 260px; }
 
     .sidebar-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 25px; }
     .sidebar-top h2 { font-size: 1.1rem; font-weight: 700; color: var(--accent); white-space: nowrap; overflow: hidden; letter-spacing: -0.5px; }
     
-    /* Os textos ficam ocultos no modo colapsado, EXCETO se o nav estiver focado */
-    aside.collapsed:not(:has(nav:hover)) .sidebar-top h2, 
-    aside.collapsed:not(:has(nav:hover)) .user-card-label, 
-    aside.collapsed:not(:has(nav:hover)) nav span { display: none; }
+    /* Os textos ficam ocultos no modo colapsado, EXCETO se o menu for expandido pelo hover */
+    aside.collapsed:not(.hover-expanded) .sidebar-top h2, 
+    aside.collapsed:not(.hover-expanded) .user-card-label, 
+    aside.collapsed:not(.hover-expanded) nav span { display: none; }
 
     .toggle-btn { background: none; border: none; color: var(--text-muted); font-size: 1.2rem; cursor: pointer; padding: 5px; }
     .toggle-btn:hover { color: var(--accent); }
@@ -110,8 +110,8 @@
     .user-card-icon { font-size: 1.2rem; color: var(--accent); min-width: 24px; text-align: center; }
     .user-card-content { flex: 1; overflow: hidden; }
 
-    aside.collapsed:not(:has(nav:hover)) .user-card { padding: 12px 0; justify-content: center; background: transparent; border: none; }
-    aside.collapsed:not(:has(nav:hover)) .user-card-content { display: none; }
+    aside.collapsed:not(.hover-expanded) .user-card { padding: 12px 0; justify-content: center; background: transparent; border: none; }
+    aside.collapsed:not(.hover-expanded) .user-card-content { display: none; }
 
     .user-card select { 
       width: 100%; padding: 6px 8px; border-radius: 6px; 
@@ -670,6 +670,17 @@
 
     document.addEventListener("DOMContentLoaded", () => {
       checkSession(); 
+      
+      // Controle do menu lateral fluido (Hover)
+      const sidebar = document.getElementById('sidebar');
+      if (sidebar) {
+        sidebar.addEventListener('mouseenter', () => {
+          if (sidebar.classList.contains('collapsed')) sidebar.classList.add('hover-expanded');
+        });
+        sidebar.addEventListener('mouseleave', () => {
+          sidebar.classList.remove('hover-expanded');
+        });
+      }
     });
 
     function toggleTheme() {
@@ -973,7 +984,7 @@
         });
       };
 
-      // Sanitização robusta para blindar eixos e tooltips do Chart.js
+      // Sanitização robusta para blindar rótulos vazados do Supabase
       const sanitize = (val) => {
         if (val === null || val === undefined) return 'Não Informado';
         const str = String(val).trim();
