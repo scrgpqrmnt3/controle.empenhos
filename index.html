@@ -1087,13 +1087,16 @@
         const isChecked = state.selectedIds.has(item.id);
         const tr = document.createElement('tr');
         
-        tr.innerHTML = `
-          <td class="bulk-col col-chk" style="${state.showBulkPanel ? '' : 'display:none;'}"><input type="checkbox" ${isChecked ? 'checked' : ''} onchange="toggleSelectRow('${item.id}', this.checked)"></td>
+        <td class="bulk-col col-chk" style="${state.showBulkPanel ? '' : 'display:none;'}"><input type="checkbox" ${isChecked ? 'checked' : ''} onchange="toggleSelectRow('${item.id}', this.checked)"></td>
           <td class="bulk-col col-act" style="${state.showBulkPanel ? '' : 'display:none;'}">
             <div style="display:flex; gap:4px;">
               <button class="btn btn-secondary" style="font-size:0.75rem; padding:3px 6px; color:#3b82f6;" onclick="openDanfeModal('${item.id}')" title="Gerenciar DANFEs"><i class="fa-solid fa-file-invoice-dollar"></i></button>
-              <button class="btn btn-secondary" style="font-size:0.75rem; padding:3px 6px;" onclick="openEditModal('${item.id}')" title="Editar"><i class="fa-solid fa-pen"></i></button>
-              <button class="btn btn-secondary" style="font-size:0.75rem; padding:3px 6px; color:#f87171;" onclick="deleteSingleNE('${item.id}')" title="Excluir"><i class="fa-solid fa-trash"></i></button>
+              ${state.showLixeira 
+                ? `<button class="btn btn-secondary" style="font-size:0.75rem; padding:3px 6px; color:#10b981;" onclick="restoreNE('${item.id}')" title="Restaurar"><i class="fa-solid fa-arrow-rotate-left"></i></button>
+                   <button class="btn btn-secondary" style="font-size:0.75rem; padding:3px 6px; color:#f87171;" onclick="deleteSingleNE('${item.id}')" title="Purgar Definitivamente"><i class="fa-solid fa-fire"></i></button>`
+                : `<button class="btn btn-secondary" style="font-size:0.75rem; padding:3px 6px;" onclick="openEditModal('${item.id}')" title="Editar"><i class="fa-solid fa-pen"></i></button>
+                   <button class="btn btn-secondary" style="font-size:0.75rem; padding:3px 6px; color:#f87171;" onclick="deleteSingleNE('${item.id}')" title="Excluir"><i class="fa-solid fa-trash"></i></button>`
+              }
             </div>
           </td>
           <td class="col-ne"><strong>${item.ne}</strong></td>
@@ -1166,41 +1169,49 @@
      * ESCRITA DE DADOS (POST/PATCH/DELETE) VIA SUPABASE
      * ========================================================== */
     async function deleteSelectedNEs() {
-      if (!isEditorOrAdmin()) return;
-      const ids = Array.from(state.selectedIds);
-      if (ids.length === 0) {
-        await appConfirm('Nenhum registro selecionado.');
-        return;
+      if (!isEditorOrAdmin() || state.selectedIds.size === 0) return;
+      
+      if (state.showLixeira) {
+        const confirmado = await appConfirm(`ATENÇÃO: Excluir ${state.selectedIds.size} registro(s) PERMANENTEMENTE?`);
+        if (!confirmado) return;
+        const { error } = await supabaseClient.from('empenhos').delete().in('id', Array.from(state.selectedIds));
+        if (error) return await appConfirm('Erro ao excluir lote: ' + error.message);
+      } else {
+        const confirmado = await appConfirm(`Mover ${state.selectedIds.size} registro(s) para a Lixeira?`);
+        if (!confirmado) return;
+        const { error } = await supabaseClient.from('empenhos').update({ ativo: false }).in('id', Array.from(state.selectedIds));
+        if (error) return await appConfirm('Erro ao mover lote: ' + error.message);
       }
       
-      const confirmado = await appConfirm(`Confirma a exclusão de ${ids.length} registro(s)? Esta ação não pode ser desfeita.`);
-      if (!confirmado) return;
-
-      const { error } = await supabaseClient.from('empenhos').delete().in('id', ids);
-      if (error) {
-        await appConfirm('Erro ao excluir registros: ' + error.message);
-        return;
-      }
-
       state.selectedIds.clear();
       updateBulkPanel();
       await fetchSheetData();
-      await appConfirm('Registro(s) excluído(s) com sucesso!');
     }
 
-    async function deleteSingleNE(id) {
+    async function deletesingleNE(id) {
       if (!isEditorOrAdmin()) return;
-      const item = state.nes.find(n => n.id === id);
-      if (!item) return;
       
-      const confirmado = await appConfirm(`Confirma a exclusão da NE "${item.ne}"?`);
-      if (!confirmado) return;
-
-      const { error } = await supabaseClient.from('empenhos').delete().eq('id', id);
-      if (error) {
-        await appConfirm('Erro ao excluir registro: ' + error.message);
-        return;
+      if (state.showLixeira) {
+        const confirmado = await appConfirm('ATENÇÃO: Esta ação é irreversível. Deseja excluir permanentemente?');
+        if (!confirmado) return;
+        const { error } = await supabaseClient.from('empenhos').delete().eq('id', id);
+        if (error) return await appConfirm('Erro ao excluir: ' + error.message);
+        await appConfirm('Registro purgado do banco de dados.');
+      } else {
+        const confirmado = await appConfirm('Deseja mover esta NE para a Lixeira?');
+        if (!confirmado) return;
+        const { error } = await supabaseClient.from('empenhos').update({ ativo: false }).eq('id', id);
+        if (error) return await appConfirm('Erro ao mover para a lixeira: ' + error.message);
       }
+      
+      await fetchSheetData();
+    }
+
+    async function restoresingleNE(id) {
+      if (!isEditorOrAdmin()) return;
+      const { error } = await supabaseClient.from('empenhos').update({ ativo: true }).eq('id', id);
+      if (error) return await appConfirm('Erro ao restaurar: ' + error.message);
+      
       await fetchSheetData();
     }
 
