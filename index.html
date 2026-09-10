@@ -901,12 +901,26 @@
         select.value = cur;
       };
       populate('select[onchange*="\'ug\'"]', 'ug');
+      populate('select[onchange*="\'requisitante\'"]', 'requisitante');
       populate('select[onchange*="\'categoria\'"]', 'categoria');
       populate('select[onchange*="\'tipo\'"]', 'tipo');
       populate('select[onchange*="\'situacao\'"]', 'situacao');
       populate('select[onchange*="\'fase\'"]', 'fase');
       populate('select[onchange*="\'descricao\'"]', 'descricao');
       populate('select[onchange*="\'responsavel\'"]', 'responsavel');
+    }
+
+    function toggleLixeira() {
+      state.showLixeira = !state.showLixeira;
+      const btn = document.getElementById('btnLixeira');
+      if (state.showLixeira) {
+        btn.classList.replace('btn-secondary', 'btn-accent');
+        btn.innerHTML = '<i class="fa-solid fa-trash-arrow-up"></i> Sair Lixeira';
+      } else {
+        btn.classList.replace('btn-accent', 'btn-secondary');
+        btn.innerHTML = '<i class="fa-solid fa-trash-can-arrow-up"></i> Lixeira';
+      }
+      applyFilters();
     }
 
     function toggleColumnFilters() {
@@ -949,11 +963,20 @@
       const anoFilter = document.getElementById('filterAnoBar').value;
 
       let filtered = state.nes.filter(item => {
+        // Controle da Lixeira (Soft Delete)
+        // O "!== false" atua como um escudo para proteger dados legados importados que não tenham essa coluna declarada.
+        const isAtivo = item.ativo !== false;
+        if (state.showLixeira && isAtivo) return false;
+        if (!state.showLixeira && !isAtivo) return false;
+
+        // Expansão da Busca Global para incluir as novas colunas
         const matchesSearch = (item.ne || '').toLowerCase().includes(search) || 
                               (item.processo || '').toLowerCase().includes(search) ||
                               (item.descricao || '').toLowerCase().includes(search) ||
                               (item.uasg || '').toLowerCase().includes(search) ||
-                              (item.ug || '').toLowerCase().includes(search);
+                              (item.ug || '').toLowerCase().includes(search) ||
+                              (item.requisitante || '').toLowerCase().includes(search) ||
+                              (item.requisicao || '').toLowerCase().includes(search);
         
         const matchesAnoBar = !anoFilter || item.ano.toString() === anoFilter;
 
@@ -983,6 +1006,10 @@
           return 0;
         });
       }
+      
+      // Salva o "aquário" atual (resultado do filtro) na memória para ações seguras
+      state.filteredNes = filtered;
+      
       renderTable(filtered);
     }
 
@@ -1108,8 +1135,15 @@
     }
 
     function toggleSelectAll(isChecked) {
-      if (isChecked) state.nes.forEach(n => state.selectedIds.add(n.id));
-      else state.selectedIds.clear();
+      // Garante que só selecionaremos os dados visíveis no filtro atual
+      const dadosAtivos = state.filteredNes || state.nes;
+      
+      if (isChecked) {
+        dadosAtivos.forEach(n => state.selectedIds.add(n.id));
+      } else {
+        state.selectedIds.clear();
+      }
+      
       applyFilters();
       updateBulkPanel();
     }
@@ -1165,22 +1199,34 @@
 
     async function applyBulkUpdate() {
       if (!isEditorOrAdmin()) return;
+      
+      // Captura todos os campos disponíveis no painel de lote
+      const newCategoria = document.getElementById('bulkCategoria') ? document.getElementById('bulkCategoria').value : '';
+      const newTipo = document.getElementById('bulkTipo') ? document.getElementById('bulkTipo').value : '';
       const newFase = document.getElementById('bulkFase').value;
       const newSit = document.getElementById('bulkSituacao').value;
 
-      if (!newFase && !newSit) return alert('Selecione Fase ou Situação.');
+      if (!newFase && !newSit && !newCategoria && !newTipo) {
+        return await appConfirm('Selecione pelo menos um campo para alterar.');
+      }
 
+      // Monta o pacote de dados dinamicamente: se o campo estiver vazio, ele é ignorado.
       const patch = { responsavel: state.session.nome };
+      if (newCategoria) patch.categoria = newCategoria;
+      if (newTipo) patch.tipo = newTipo;
       if (newFase) patch.fase = newFase;
       if (newSit) patch.situacao = newSit;
 
       const { error } = await supabaseClient.from('empenhos').update(patch).in('id', Array.from(state.selectedIds));
-      if (error) return alert('Erro ao atualizar: ' + error.message);
+      if (error) {
+        await appConfirm('Erro ao atualizar em lote: ' + error.message);
+        return;
+      }
 
       state.selectedIds.clear();
       updateBulkPanel();
       await fetchSheetData();
-      alert('Ações concluídas!');
+      await appConfirm('Ações em lote aplicadas com sucesso!');
     }
 
     async function saveNE(e) {
