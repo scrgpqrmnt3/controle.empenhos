@@ -1188,7 +1188,7 @@
       await fetchSheetData();
     }
 
-    async function deletesingleNE(id) {
+    async function deleteSingleNE(id) {
       if (!isEditorOrAdmin()) return;
       
       if (state.showLixeira) {
@@ -1207,7 +1207,7 @@
       await fetchSheetData();
     }
 
-    async function restoresingleNE(id) {
+    async function restoreSingleNE(id) {
       if (!isEditorOrAdmin()) return;
       const { error } = await supabaseClient.from('empenhos').update({ ativo: true }).eq('id', id);
       if (error) return await appConfirm('Erro ao restaurar: ' + error.message);
