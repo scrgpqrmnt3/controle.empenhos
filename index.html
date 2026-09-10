@@ -1086,13 +1086,13 @@
       pageData.forEach((item) => {
         const isChecked = state.selectedIds.has(item.id);
         const tr = document.createElement('tr');
-        
-        <td class="bulk-col col-chk" style="${state.showBulkPanel ? '' : 'display:none;'}"><input type="checkbox" ${isChecked ? 'checked' : ''} onchange="toggleSelectRow('${item.id}', this.checked)"></td>
+        tr.innerHTML = `
+          <td class="bulk-col col-chk" style="${state.showBulkPanel ? '' : 'display:none;'}"><input type="checkbox" ${isChecked ? 'checked' : ''} onchange="toggleSelectRow('${item.id}', this.checked)"></td>
           <td class="bulk-col col-act" style="${state.showBulkPanel ? '' : 'display:none;'}">
             <div style="display:flex; gap:4px;">
               <button class="btn btn-secondary" style="font-size:0.75rem; padding:3px 6px; color:#3b82f6;" onclick="openDanfeModal('${item.id}')" title="Gerenciar DANFEs"><i class="fa-solid fa-file-invoice-dollar"></i></button>
               ${state.showLixeira 
-                ? `<button class="btn btn-secondary" style="font-size:0.75rem; padding:3px 6px; color:#10b981;" onclick="restoreNE('${item.id}')" title="Restaurar"><i class="fa-solid fa-arrow-rotate-left"></i></button>
+                ? `<button class="btn btn-secondary" style="font-size:0.75rem; padding:3px 6px; color:#10b981;" onclick="restoreSingleNE('${item.id}')" title="Restaurar"><i class="fa-solid fa-arrow-rotate-left"></i></button>
                    <button class="btn btn-secondary" style="font-size:0.75rem; padding:3px 6px; color:#f87171;" onclick="deleteSingleNE('${item.id}')" title="Purgar Definitivamente"><i class="fa-solid fa-fire"></i></button>`
                 : `<button class="btn btn-secondary" style="font-size:0.75rem; padding:3px 6px;" onclick="openEditModal('${item.id}')" title="Editar"><i class="fa-solid fa-pen"></i></button>
                    <button class="btn btn-secondary" style="font-size:0.75rem; padding:3px 6px; color:#f87171;" onclick="deleteSingleNE('${item.id}')" title="Excluir"><i class="fa-solid fa-trash"></i></button>`
