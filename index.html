@@ -81,13 +81,17 @@
       z-index: 100;
     }
 
-    aside.collapsed { width: 75px; }
+/* Adicionada transição suave e expansão atrelada estritamente ao hover no nav */
+    aside.collapsed { width: 75px; transition: width 0.3s ease; }
+    aside.collapsed:has(nav:hover) { width: 260px; }
 
     .sidebar-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 25px; }
     .sidebar-top h2 { font-size: 1.1rem; font-weight: 700; color: var(--accent); white-space: nowrap; overflow: hidden; letter-spacing: -0.5px; }
-    aside.collapsed .sidebar-top h2, 
-    aside.collapsed .user-card-label, 
-    aside.collapsed nav span { display: none; }
+    
+    /* Os textos ficam ocultos no modo colapsado, EXCETO se o nav estiver focado */
+    aside.collapsed:not(:has(nav:hover)) .sidebar-top h2, 
+    aside.collapsed:not(:has(nav:hover)) .user-card-label, 
+    aside.collapsed:not(:has(nav:hover)) nav span { display: none; }
 
     .toggle-btn { background: none; border: none; color: var(--text-muted); font-size: 1.2rem; cursor: pointer; padding: 5px; }
     .toggle-btn:hover { color: var(--accent); }
@@ -106,8 +110,8 @@
     .user-card-icon { font-size: 1.2rem; color: var(--accent); min-width: 24px; text-align: center; }
     .user-card-content { flex: 1; overflow: hidden; }
 
-    aside.collapsed .user-card { padding: 12px 0; justify-content: center; background: transparent; border: none; }
-    aside.collapsed .user-card-content { display: none; }
+    aside.collapsed:not(:has(nav:hover)) .user-card { padding: 12px 0; justify-content: center; background: transparent; border: none; }
+    aside.collapsed:not(:has(nav:hover)) .user-card-content { display: none; }
 
     .user-card select { 
       width: 100%; padding: 6px 8px; border-radius: 6px; 
@@ -969,7 +973,12 @@
         });
       };
 
-      const sanitize = (val) => (!val || val === 'undefined') ? 'Não Informado' : val;
+      // Sanitização robusta para blindar eixos e tooltips do Chart.js
+      const sanitize = (val) => {
+        if (val === null || val === undefined) return 'Não Informado';
+        const str = String(val).trim();
+        return (str === '' || str.toLowerCase() === 'undefined' || str.toLowerCase() === 'null') ? 'Não Informado' : str;
+      };
 
       const pubCount = state.nes.filter(n => n.situacao === 'Publicado').length;
       const pendCount = state.nes.filter(n => n.situacao === 'Publicar').length;
@@ -1079,26 +1088,39 @@
     async function deleteSelectedNEs() {
       if (!isEditorOrAdmin()) return;
       const ids = Array.from(state.selectedIds);
-      if (ids.length === 0) return alert('Nenhum registro selecionado.');
-      if (!confirm(`Confirma a exclusão de ${ids.length} registro(s)? Esta ação não pode ser desfeita.`)) return;
+      if (ids.length === 0) {
+        await appConfirm('Nenhum registro selecionado.');
+        return;
+      }
+      
+      const confirmado = await appConfirm(`Confirma a exclusão de ${ids.length} registro(s)? Esta ação não pode ser desfeita.`);
+      if (!confirmado) return;
 
       const { error } = await supabaseClient.from('empenhos').delete().in('id', ids);
-      if (error) return alert('Erro ao excluir registros: ' + error.message);
+      if (error) {
+        await appConfirm('Erro ao excluir registros: ' + error.message);
+        return;
+      }
 
       state.selectedIds.clear();
       updateBulkPanel();
       await fetchSheetData();
-      alert('Registro(s) excluído(s) com sucesso!');
+      await appConfirm('Registro(s) excluído(s) com sucesso!');
     }
 
     async function deleteSingleNE(id) {
       if (!isEditorOrAdmin()) return;
       const item = state.nes.find(n => n.id === id);
       if (!item) return;
-      if (!confirm(`Confirma a exclusão da NE "${item.ne}"?`)) return;
+      
+      const confirmado = await appConfirm(`Confirma a exclusão da NE "${item.ne}"?`);
+      if (!confirmado) return;
 
       const { error } = await supabaseClient.from('empenhos').delete().eq('id', id);
-      if (error) return alert('Erro ao excluir registro: ' + error.message);
+      if (error) {
+        await appConfirm('Erro ao excluir registro: ' + error.message);
+        return;
+      }
       await fetchSheetData();
     }
 
@@ -1782,6 +1804,43 @@
       document.getElementById(tabId).classList.add('active');
       btn.classList.add('active');
     }
+  </script>
+<!-- MODAL CUSTOMIZADO DE CONFIRMAÇÃO (appConfirm) -->
+  <div id="customConfirmModal" style="display:none; position:fixed; top:0; left:0; width:100vw; height:100vh; background:rgba(15,23,42,0.85); z-index:10000; align-items:center; justify-content:center; backdrop-filter:blur(4px);">
+    <div style="background:var(--bg-main); border:1px solid var(--border-color); padding:30px; border-radius:12px; max-width:400px; width:90%; box-shadow:0 10px 25px rgba(0,0,0,0.5); text-align:center;">
+      <i class="fas fa-exclamation-triangle" style="font-size:2.5rem; color:var(--accent); margin-bottom:15px; display:block;"></i>
+      <h3 style="margin-top:0; color:#fff; font-size:1.2rem; margin-bottom:10px;">Confirmação</h3>
+      <p id="customConfirmMessage" style="color:var(--text-muted); font-size:0.95rem; margin-bottom:25px; line-height:1.5;"></p>
+      <div style="display:flex; gap:10px; justify-content:center;">
+        <button id="btnConfirmCancel" style="background:transparent; border:1px solid var(--border-color); color:#fff; padding:10px 20px; border-radius:6px; cursor:pointer; font-weight:600; flex:1; transition:0.2s;">Cancelar</button>
+        <button id="btnConfirmOk" style="background:var(--accent); border:none; color:#fff; padding:10px 20px; border-radius:6px; cursor:pointer; font-weight:600; flex:1; transition:0.2s;">Confirmar</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Motor Baseado em Promises para Substituir o window.confirm
+    window.appConfirm = function(mensagem) {
+      return new Promise((resolve) => {
+        const modal = document.getElementById('customConfirmModal');
+        const msgEl = document.getElementById('customConfirmMessage');
+        const btnCancel = document.getElementById('btnConfirmCancel');
+        const btnOk = document.getElementById('btnConfirmOk');
+        
+        msgEl.textContent = mensagem;
+        modal.style.display = 'flex';
+        
+        const fechar = (resultado) => {
+          modal.style.display = 'none';
+          btnCancel.onclick = null;
+          btnOk.onclick = null;
+          resolve(resultado);
+        };
+        
+        btnCancel.onclick = () => fechar(false);
+        btnOk.onclick = () => fechar(true);
+      });
+    };
   </script>
 </body>
 </html>
