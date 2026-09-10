@@ -530,9 +530,9 @@
           <div id="fieldSingleNE"><label style="font-size: 0.75rem;">Nº NE (6 dígitos)</label><input type="text" id="modalNE" required style="width: 100%;"></div>
           <div><label style="font-size: 0.75rem;">UG</label><select id="modalUGSelect" required style="width:100%;"></select></div>
 
-          <div><label style="font-size: 0.75rem;">SETOR (REQUISITANTE)</label><input type="text" id="modalRequisitante" style="width: 100%;"></div>
+          <div><label style="font-size: 0.75rem;">SETOR</label><input type="text" id="modalRequisitante" style="width: 100%;"></div>
           <div><label style="font-size: 0.75rem;">REQUISIÇÃO</label><input type="text" id="modalRequisicao" style="width: 100%;"></div>
-          <div><label style="font-size: 0.75rem;">DATA EMISSÃO</label><input type="date" id="modalEmissao" style="width: 100%;"></div>
+          <div><label style="font-size: 0.75rem;">EMISSÃO</label><input type="date" id="modalEmissao" style="width: 100%;"></div>
 
           <div>
             <label style="font-size: 0.75rem;">CATEGORIA</label>
@@ -1309,7 +1309,7 @@
     }
 
     /* ==========================================================
-     * GESTÃO DE DANFEs EM NE
+     * GESTÃO DE DANFEs EM NE (DRAFT STATE / CARRINHO DE COMPRAS)
      * ========================================================== */
     function openDanfeModal(id) {
       const item = state.nes.find(n => n.id === id);
@@ -1317,39 +1317,48 @@
       document.getElementById('danfeModalEditId').value = item.id;
       document.getElementById('danfeModalNE').textContent = item.ne;
       document.getElementById('danfeModal').style.display = 'flex';
-      renderDanfeList(item);
+      
+      // Carrega os dados oficiais para a memória temporária do navegador
+      state.draftDanfes = item.danfes_registradas ? JSON.parse(JSON.stringify(item.danfes_registradas)) : [];
+      state.draftPontos = 0;
+      
+      renderDanfeList();
     }
 
     function closeDanfeModal() {
       document.getElementById('danfeModal').style.display = 'none';
+      state.draftDanfes = [];
+      state.draftPontos = 0;
     }
 
-    function renderDanfeList(item) {
+    function renderDanfeList() {
       const container = document.getElementById('danfeListContainer');
+      const id = document.getElementById('danfeModalEditId').value;
+      const item = state.nes.find(n => n.id === id);
       const totalNe = Number(item.valor) || 0;
       let somaDanfesPagas = 0;
-      const arr = item.danfes_registradas || [];
       
       container.innerHTML = '';
-      if (arr.length === 0) {
-        container.innerHTML = '<div style="font-size:0.8rem; color:var(--text-muted); text-align:center; padding: 10px;">Nenhuma DANFE registrada para esta NE.</div>';
+      if (state.draftDanfes.length === 0) {
+        container.innerHTML = '<div style="font-size:0.8rem; color:var(--text-muted); text-align:center; padding: 10px;">Nenhuma DANFE registrada no rascunho.</div>';
       } else {
-        arr.forEach((d, idx) => {
+        state.draftDanfes.forEach((d, idx) => {
           if (d.pagamento) somaDanfesPagas += Number(d.valor);
+          
+          // Layout de Estado Único (Opção A)
+          const btnPagamento = d.pagamento 
+            ? `<span class="badge badge-publicado"><i class="fa-solid fa-check-double"></i> Pago</span>` 
+            : `<button type="button" class="btn btn-secondary" onclick="registerPagamentoDraft(${idx})" style="padding:4px 8px; font-size:0.7rem;"><i class="fa-solid fa-money-bill-wave"></i> Pagar</button>`;
+            
           container.innerHTML += `
             <div style="display:flex; justify-content:space-between; align-items:center; padding: 8px 12px; background: rgba(255,255,255,0.03); border: 1px solid var(--border-color); border-radius: 6px; margin-bottom: 8px;">
               <div>
-                <strong style="font-size: 0.85rem;">Nº ${d.numero}</strong> <span class="badge ${d.pagamento ? 'badge-publicado' : 'badge-publicar'}" style="margin-left: 5px;">${d.pagamento ? 'Pagamento' : 'Liquidação'}</span><br>
+                <strong style="font-size: 0.85rem;">Nº ${d.numero}</strong> <span class="badge badge-publicar" style="margin-left: 5px;">Liquidação</span><br>
                 <span style="font-size: 0.75rem; color: var(--text-muted);">R$ ${Number(d.valor).toLocaleString('pt-BR', {minimumFractionDigits: 2})}</span>
               </div>
               <div style="display:flex; gap:12px; align-items:center;">
-                <label style="font-size: 0.75rem; display:flex; align-items:center; gap:4px; cursor:pointer; color: ${d.pagamento ? 'var(--badge-publicado-text)' : 'inherit'}">
-                  <input type="checkbox" ${d.pagamento ? 'checked' : ''} onchange="toggleDanfePagamento(${idx}, this.checked)"> Pago
-                </label>
-                <label style="font-size: 0.75rem; display:flex; align-items:center; gap:4px; cursor:pointer;">
-                  <input type="checkbox" ${d.publicada_dspace ? 'checked' : ''} onchange="toggleDanfeDspace(${idx}, this.checked)"> DSpace
-                </label>
-                <button type="button" class="btn btn-secondary" onclick="removeDanfe(${idx})" style="padding:4px 8px; font-size:0.7rem; color:#f87171;"><i class="fa-solid fa-trash"></i></button>
+                ${btnPagamento}
+                <button type="button" class="btn btn-secondary" onclick="removeDanfeDraft(${idx})" style="padding:4px 8px; font-size:0.7rem; color:#f87171;"><i class="fa-solid fa-trash"></i></button>
               </div>
             </div>
           `;
@@ -1362,62 +1371,90 @@
       document.getElementById('danfeModalSaldo').style.color = saldo < 0 ? '#f87171' : (saldo === 0 ? '#10b981' : 'var(--accent)');
     }
 
-    async function saveDanfeArrayToDB(id, newArray) {
-      const { error } = await supabaseClient.from('empenhos').update({ danfes_registradas: newArray }).eq('id', id);
-      if (error) {
-        alert('Erro ao salvar DANFEs: ' + error.message);
-        return false;
-      }
-      await fetchSheetData();
-      const updatedItem = state.nes.find(n => n.id === id);
-      renderDanfeList(updatedItem);
-      return true;
-    }
-
-    async function addDanfeToNE() {
+    function addDanfeToNE() {
       if (!isEditorOrAdmin()) return;
-      const id = document.getElementById('danfeModalEditId').value;
       const numero = document.getElementById('novaDanfeNumero').value.trim();
       const valor = parseFloat(document.getElementById('novaDanfeValor').value);
       
-      if (!numero || isNaN(valor)) return alert('Preencha o número e um valor válido.');
-      
-      const item = state.nes.find(n => n.id === id);
-      const arr = item.danfes_registradas ? [...item.danfes_registradas] : [];
-      arr.push({ numero, valor, pagamento: false, publicada_dspace: false });
-      
-      if (await saveDanfeArrayToDB(id, arr)) {
-        document.getElementById('novaDanfeNumero').value = '';
-        document.getElementById('novaDanfeValor').value = '';
+      if (!numero || isNaN(valor)) {
+        appConfirm('Preencha o número e um valor válido.');
+        return;
       }
+      
+      // Insere no rascunho com a flag de produtividade marcada
+      state.draftDanfes.push({ 
+        numero, 
+        valor, 
+        pagamento: false, 
+        meta_liquidacao_registrada: true, 
+        meta_pagamento_registrada: false 
+      });
+      
+      state.draftPontos += 1; // +1 Ponto de Produção em Rascunho
+      
+      document.getElementById('novaDanfeNumero').value = '';
+      document.getElementById('novaDanfeValor').value = '';
+      renderDanfeList();
     }
 
-    async function removeDanfe(index) {
+    function registerPagamentoDraft(index) {
       if (!isEditorOrAdmin()) return;
-      if (!confirm('Deseja excluir esta DANFE?')) return;
-      const id = document.getElementById('danfeModalEditId').value;
-      const item = state.nes.find(n => n.id === id);
-      const arr = [...item.danfes_registradas];
-      arr.splice(index, 1);
-      await saveDanfeArrayToDB(id, arr);
+      
+      state.draftDanfes[index].pagamento = true;
+      
+      // Se este pagamento ainda não gerou pontos no rascunho, pontua e trava a flag
+      if (!state.draftDanfes[index].meta_pagamento_registrada) {
+         state.draftDanfes[index].meta_pagamento_registrada = true;
+         state.draftPontos += 1;
+      }
+      
+      renderDanfeList();
     }
 
-    async function toggleDanfePagamento(index, isChecked) {
+    async function removeDanfeDraft(index) {
       if (!isEditorOrAdmin()) return;
-      const id = document.getElementById('danfeModalEditId').value;
-      const item = state.nes.find(n => n.id === id);
-      const arr = [...item.danfes_registradas];
-      arr[index].pagamento = isChecked;
-      await saveDanfeArrayToDB(id, arr);
+      const confirmado = await appConfirm('Deseja remover esta DANFE do rascunho?');
+      if (!confirmado) return;
+      
+      state.draftDanfes.splice(index, 1);
+      renderDanfeList();
     }
 
-    async function toggleDanfeDspace(index, isChecked) {
+    async function saveDanfeDraft() {
       if (!isEditorOrAdmin()) return;
       const id = document.getElementById('danfeModalEditId').value;
-      const item = state.nes.find(n => n.id === id);
-      const arr = [...item.danfes_registradas];
-      arr[index].publicada_dspace = isChecked;
-      await saveDanfeArrayToDB(id, arr);
+      
+      const { error } = await supabaseClient.from('empenhos').update({ danfes_registradas: state.draftDanfes }).eq('id', id);
+      
+      if (error) {
+        await appConfirm('Erro ao salvar o array de DANFEs: ' + error.message);
+        return;
+      }
+      
+      // Submissão Consolidada de Metas: Dispara apenas se o rascunho gerou produtividade
+      if (state.draftPontos > 0) {
+         const newStock = Math.max(0, state.danfeStock - state.draftPontos);
+         const payload = {
+            usuario_nome: state.session.nome,
+            pasta_local_saldo: newStock,
+            quantidade_publicada: state.draftPontos,
+            tipo_registro: 'TURNO'
+         };
+         
+         const { error: metaError } = await supabaseClient.from('metas_producao').insert([payload]);
+         if (!metaError) {
+            state.danfeStock = newStock;
+            state.danfeLogs.push({ data: new Date().toLocaleDateString('pt-BR'), usuario: state.session.nome, quantidade: state.draftPontos });
+            
+            // Atualiza os inputs estáticos da aba de Metas
+            const stockInput = document.getElementById('danfeStockInput');
+            if (stockInput) stockInput.value = state.danfeStock;
+         }
+      }
+      
+      closeDanfeModal();
+      await fetchSheetData();
+      await appConfirm('Alterações e metas consolidadas com sucesso!');
     }
 
     /* ==========================================================
