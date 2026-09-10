@@ -530,6 +530,10 @@
           <div id="fieldSingleNE"><label style="font-size: 0.75rem;">Nº NE (6 dígitos)</label><input type="text" id="modalNE" required style="width: 100%;"></div>
           <div><label style="font-size: 0.75rem;">UG</label><select id="modalUGSelect" required style="width:100%;"></select></div>
 
+          <div><label style="font-size: 0.75rem;">SETOR (REQUISITANTE)</label><input type="text" id="modalRequisitante" style="width: 100%;"></div>
+          <div><label style="font-size: 0.75rem;">REQUISIÇÃO</label><input type="text" id="modalRequisicao" style="width: 100%;"></div>
+          <div><label style="font-size: 0.75rem;">DATA EMISSÃO</label><input type="date" id="modalEmissao" style="width: 100%;"></div>
+
           <div>
             <label style="font-size: 0.75rem;">CATEGORIA</label>
             <select id="modalCategoria" required style="width:100%;">
@@ -625,12 +629,13 @@
       </div>
 
       <div style="border-top: 1px solid var(--border-color); padding-top: 15px;">
-        <label style="font-size: 0.85rem; font-weight: 600; margin-bottom: 10px; display: block;">DANFEs Registradas</label>
+        <label style="font-size: 0.85rem; font-weight: 600; margin-bottom: 10px; display: block;">DANFEs Registradas (Rascunho)</label>
         <div id="danfeListContainer" style="max-height: 250px; overflow-y: auto;"></div>
       </div>
 
       <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:20px;">
-        <button type="button" class="btn btn-secondary" onclick="closeDanfeModal()">Fechar</button>
+        <button type="button" class="btn btn-secondary" onclick="closeDanfeModal()">Cancelar</button>
+        <button type="button" class="btn btn-accent" onclick="saveDanfeDraft()"><i class="fa-solid fa-check"></i> Salvar Alterações</button>
       </div>
     </div>
   </div>
@@ -683,7 +688,9 @@
       showColumnFilters: false,
       showBulkPanel: false,
       showLixeira: false,
-      nes: []
+      nes: [],
+      draftDanfes: [],
+      draftPontos: 0
     };
 
     document.addEventListener("DOMContentLoaded", () => {
