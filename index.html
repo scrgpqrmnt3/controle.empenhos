@@ -337,6 +337,7 @@
 
           <input type="text" id="searchInput" placeholder="Pesquisar por NE, Processo, Descrição, UASG, UG..." style="flex: 1; min-width: 240px;" oninput="applyFilters()">
           
+          <button id="btnLixeira" class="btn btn-secondary" onclick="toggleLixeira()" style="display:none;"><i class="fa-solid fa-trash-can-arrow-up"></i> Lixeira</button>
           <button id="btnAcoesEditar" class="btn btn-secondary" onclick="toggleBulkPanelUI()"><i class="fa-solid fa-sliders"></i> Ações / Editar</button>
           <button class="btn btn-secondary" onclick="toggleColumnFilters()"><i class="fa-solid fa-filter"></i> Filtros Coluna</button>
           <button class="btn btn-secondary" onclick="toggleColumnVisibilityPanel()"><i class="fa-solid fa-eye"></i> Colunas</button>
@@ -346,26 +347,36 @@
 
       <div id="colTogglePanel" class="col-toggle-panel"></div>
 
-      <div id="bulkPanel" class="bulk-panel">
-        <div><strong><span id="selectedCount">0</span> registro(s) selecionado(s)</strong></div>
-        <div style="display: flex; gap: 10px; align-items: center;">
+      <div id="bulkPanel" class="bulk-panel" style="display: none; flex-direction: column; align-items: stretch; gap: 15px;">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+          <div><strong><span id="selectedCount">0</span> registro(s) selecionado(s)</strong></div>
+          <div style="display: flex; gap: 10px;">
+            <button class="btn btn-accent" onclick="applyBulkUpdate()"><i class="fa-solid fa-check"></i> Aplicar Alterações</button>
+            <button class="btn btn-secondary" style="color: #f87171; border-color: rgba(239, 68, 68, 0.4);" onclick="deleteSelectedNEs()"><i class="fa-solid fa-trash"></i> Excluir Lote</button>
+          </div>
+        </div>
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 10px;">
+          <select id="bulkCategoria">
+            <option value="">Alterar Categoria...</option>
+            <option value="UGG">UGG</option><option value="UGP">UGP</option><option value="UGNP">UGNP</option>
+            <option value="DISP">DISP</option><option value="INEX">INEX</option><option value="AJ CUSTO">AJ CUSTO</option>
+            <option value="INDZ TRNSP">INDZ TRNSP</option><option value="PASSG">PASSG</option><option value="DIARIA">DIARIA</option>
+            <option value="ANEE">ANEE</option>
+          </select>
+          <select id="bulkTipo">
+            <option value="">Alterar Tipo...</option>
+            <option value="Ordinário">Ordinário</option><option value="Estimativo">Estimativo</option><option value="Global">Global</option>
+          </select>
           <select id="bulkFase">
             <option value="">Alterar Fase...</option>
-            <option value="Empenho">Empenho</option>
-            <option value="Liquidado">Liquidado</option>
-            <option value="Pago">Pago</option>
-            <option value="Arquivado">Arquivado</option>
-            <option value="Cancelado">Cancelado</option>
-            <option value="Anulado">Anulado</option>
+            <option value="Empenho">Empenho</option><option value="Liquidado">Liquidado</option>
+            <option value="Pago">Pago</option><option value="Arquivado">Arquivado</option>
+            <option value="Cancelado">Cancelado</option><option value="Anulado">Anulado</option>
           </select>
           <select id="bulkSituacao">
             <option value="">Alterar Situação...</option>
-            <option value="Publicar">Publicar</option>
-            <option value="Publicado">Publicado</option>
-            <option value="Arquivar">Arquivar</option>
+            <option value="Publicar">Publicar</option><option value="Publicado">Publicado</option><option value="Arquivar">Arquivar</option>
           </select>
-          <button class="btn btn-accent" onclick="applyBulkUpdate()">Aplicar Alterações</button>
-          <button class="btn btn-secondary" style="color: #f87171; border-color: rgba(239, 68, 68, 0.4);" onclick="deleteSelectedNEs()"><i class="fa-solid fa-trash"></i> Excluir</button>
         </div>
       </div>
 
@@ -397,6 +408,9 @@
                 <th class="bulk-col col-act" style="display:none; width: 80px;">AÇÃO</th>
                 <th class="sortable col-ne" onclick="sortTable('ne')">NE <span id="sort-ne"></span></th>
                 <th class="sortable col-ug" onclick="sortTable('ug')">UG <span id="sort-ug"></span></th>
+                <th class="sortable col-requisitante" onclick="sortTable('requisitante')">SETOR <span id="sort-requisitante"></span></th>
+                <th class="sortable col-requisicao" onclick="sortTable('requisicao')">REQUISIÇÃO <span id="sort-requisicao"></span></th>
+                <th class="sortable col-data_emissao" onclick="sortTable('data_emissao')">EMISSÃO <span id="sort-data_emissao"></span></th>
                 <th class="sortable col-categoria" onclick="sortTable('categoria')">CATEGORIA <span id="sort-categoria"></span></th>
                 <th class="sortable col-tipo" onclick="sortTable('tipo')">TIPO <span id="sort-tipo"></span></th>
                 <th class="sortable col-processo" onclick="sortTable('processo')">PROCESSO <span id="sort-processo"></span></th>
@@ -415,6 +429,9 @@
                 <th class="bulk-col col-act" style="display:none;"></th>
                 <th class="col-ne"><input type="text" class="col-filter-input" placeholder="Filtrar..." oninput="applyColumnFilter('ne', this.value)"></th>
                 <th class="col-ug"><select class="col-filter-select" onchange="applyColumnFilter('ug', this.value)"></select></th>
+                <th class="col-requisitante"><select class="col-filter-select" onchange="applyColumnFilter('requisitante', this.value)"></select></th>
+                <th class="col-requisicao"><input type="text" class="col-filter-input" placeholder="Filtrar..." oninput="applyColumnFilter('requisicao', this.value)"></th>
+                <th class="col-data_emissao"><input type="text" class="col-filter-input" placeholder="Data..." oninput="applyColumnFilter('data_emissao', this.value)"></th>
                 <th class="col-categoria"><select class="col-filter-select" onchange="applyColumnFilter('categoria', this.value)"></select></th>
                 <th class="col-tipo"><select class="col-filter-select" onchange="applyColumnFilter('tipo', this.value)"></select></th>
                 <th class="col-processo"><input type="text" class="col-filter-input" placeholder="Filtrar..." oninput="applyColumnFilter('processo', this.value)"></th>
@@ -665,6 +682,7 @@
       sortAsc: true,
       showColumnFilters: false,
       showBulkPanel: false,
+      showLixeira: false,
       nes: []
     };
 
@@ -728,6 +746,9 @@
             ano: row.ano,
             ne: row.ne,
             ug: row.ug,
+            requisitante: row.requisitante || '',
+            requisicao: row.requisicao || '',
+            data_emissao: formatDate(row.data_emissao),
             uasg: row.uasg || '',
             categoria: row.categoria,
             tipo: row.tipo,
@@ -740,6 +761,7 @@
             publi: formatDate(row.publi),
             responsavel: row.responsavel || '',
             atu: formatDate(row.atu),
+            ativo: row.ativo,
             danfes_registradas: danfes
           };
         });
@@ -806,6 +828,9 @@
     const COLUMN_DEFINITIONS = [
       { id: 'ne', label: 'NE' },
       { id: 'ug', label: 'UG' },
+      { id: 'requisitante', label: 'SETOR' },
+      { id: 'requisicao', label: 'REQUISIÇÃO' },
+      { id: 'data_emissao', label: 'EMISSÃO' },
       { id: 'categoria', label: 'CATEGORIA' },
       { id: 'tipo', label: 'TIPO' },
       { id: 'processo', label: 'PROCESSO' },
@@ -1039,6 +1064,9 @@
           </td>
           <td class="col-ne"><strong>${item.ne}</strong></td>
           <td class="col-ug">${item.ug}</td>
+          <td class="col-requisitante">${item.requisitante || '-'}</td>
+          <td class="col-requisicao">${item.requisicao || '-'}</td>
+          <td class="col-data_emissao">${item.data_emissao || '-'}</td>
           <td class="col-categoria">${item.categoria}</td>
           <td class="col-tipo">${item.tipo}</td>
           <td class="col-processo">${item.processo}</td>
@@ -1781,6 +1809,7 @@
       document.getElementById('navMetas').style.display = editorOuAdmin ? '' : 'none';
       document.getElementById('navFeedback').style.display = editorOuAdmin ? '' : 'none';
       document.getElementById('btnNovaNE').style.display = editorOuAdmin ? '' : 'none';
+      document.getElementById('btnLixeira').style.display = editorOuAdmin ? '' : 'none';
 
       if (!editorOuAdmin) {
         state.showBulkPanel = false;
