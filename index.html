@@ -402,9 +402,10 @@
                   <button class="btn btn-secondary btn-delete" style="font-size:0.75rem; padding:3px 6px; color:#f87171;" title="Excluir"><i class="fa-solid fa-trash"></i></button>
                 </div>
               </td>
-              <td class="col-ne"><strong class="cell-ne"></strong></td>
-              <td class="col-ug cell-ug"></td>
-              <td class="col-requisitante cell-requisitante"></td>
+              <td class="col-ne"><strong>${item.ne}</strong></td>
+              <td class="col-sped">${item.sped || '<span style="color:var(--text-muted); font-size:0.75rem;">Não informado</span>'}</td>
+              <td class="col-ug">${item.ug}</td>
+              <td class="col-requisitante">${item.requisitante || '-'}</td>
               <td class="col-requisicao cell-requisicao"></td>
               <td class="col-data_emissao cell-emissao"></td>
               <td class="col-categoria cell-categoria"></td>
@@ -427,6 +428,7 @@
                 <th class="bulk-col col-chk" style="display:none; width: 40px;"><input type="checkbox" id="selectAllCheckbox" onchange="toggleSelectAll(this.checked)"></th>
                 <th class="bulk-col col-act" style="display:none; width: 80px;">AÇÃO</th>
                 <th class="sortable col-ne" onclick="sortTable('ne')">NE <span id="sort-ne"></span></th>
+                <th class="sortable col-sped" onclick="sortTable('sped')">Nº SPED <span id="sort-sped"></span></th>
                 <th class="sortable col-ug" onclick="sortTable('ug')">UG <span id="sort-ug"></span></th>
                 <th class="sortable col-requisitante" onclick="sortTable('requisitante')">SETOR <span id="sort-requisitante"></span></th>
                 <th class="sortable col-requisicao" onclick="sortTable('requisicao')">REQUISIÇÃO <span id="sort-requisicao"></span></th>
@@ -448,6 +450,7 @@
                 <th class="bulk-col col-chk" style="display:none;"></th>
                 <th class="bulk-col col-act" style="display:none;"></th>
                 <th class="col-ne"><input type="text" class="col-filter-input" placeholder="Filtrar..." oninput="applyColumnFilter('ne', this.value)"></th>
+                <th class="col-sped"><input type="text" class="col-filter-input" placeholder="Filtrar..." oninput="applyColumnFilter('sped', this.value)"></th>
                 <th class="col-ug"><select class="col-filter-select" onchange="applyColumnFilter('ug', this.value)"></select></th>
                 <th class="col-requisitante"><select class="col-filter-select" onchange="applyColumnFilter('requisitante', this.value)"></select></th>
                 <th class="col-requisicao"><input type="text" class="col-filter-input" placeholder="Filtrar..." oninput="applyColumnFilter('requisicao', this.value)"></th>
@@ -548,6 +551,7 @@
         <div class="modal-grid">
           <div><label style="font-size: 0.75rem;">ANO</label><input type="number" id="modalAno" required style="width: 100%;"></div>
           <div id="fieldSingleNE"><label style="font-size: 0.75rem;">Nº NE (6 dígitos)</label><input type="text" id="modalNE" required style="width: 100%;"></div>
+          <div id="fieldSingleSPED"><label style="font-size: 0.75rem;">Nº SPED</label><input type="text" id="modalSPED" maxlength="6" pattern="\d{6}" title="Opcional. Deve conter exatamente 6 números." placeholder="Opcional" style="width: 100%;"></div>
           <div><label style="font-size: 0.75rem;">UG</label><select id="modalUGSelect" required style="width:100%;"></select></div>
 
           <div><label style="font-size: 0.75rem;">SETOR</label><input type="text" id="modalRequisitante" style="width: 100%;"></div>
@@ -588,7 +592,7 @@
         <!-- Seção Dinâmica de Lote -->
         <div id="batchContainer" style="display:none; margin-top:15px; border-top:1px solid var(--border-color); padding-top:15px;">
           <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
-            <label style="font-size:0.85rem; font-weight:600;">Itens do Lote (Nº NE e Valor)</label>
+            <label style="font-size:0.85rem; font-weight:600;">Itens do Lote (Nº NE, SPED e Valor)</label>
             <button type="button" class="btn btn-secondary" onclick="addBatchRow()" style="font-size:0.75rem; padding:4px 8px;"><i class="fa-solid fa-plus"></i> Adicionar NE</button>
           </div>
           <div id="batchRows" style="display:flex; flex-direction:column; gap:8px; max-height:180px; overflow-y:auto; padding-right:5px;"></div>
@@ -813,6 +817,7 @@
             id: row.id,
             ano: row.ano,
             ne: row.ne,
+            sped: row.sped ? String(row.sped).padStart(6, '0') : null,
             ug: row.ug,
             requisitante: row.requisitante || '',
             requisicao: row.requisicao || '',
@@ -895,6 +900,7 @@
 
     const COLUMN_DEFINITIONS = [
       { id: 'ne', label: 'NE' },
+      { id: 'sped', label: 'Nº SPED' },
       { id: 'ug', label: 'UG' },
       { id: 'requisitante', label: 'SETOR' },
       { id: 'requisicao', label: 'REQUISIÇÃO' },
@@ -1039,6 +1045,7 @@
 
         // Expansão da Busca Global para incluir as novas colunas
         const matchesSearch = (item.ne || '').toLowerCase().includes(search) || 
+                              (item.sped ? String(item.sped) : '').includes(search) ||
                               (item.processo || '').toLowerCase().includes(search) ||
                               (item.descricao || '').toLowerCase().includes(search) ||
                               (item.uasg || '').toLowerCase().includes(search) ||
@@ -1360,6 +1367,7 @@
         const payload = {
           ...baseHeader,
           ne: document.getElementById('modalNE').value,
+          sped: document.getElementById('modalSPED').value ? parseInt(document.getElementById('modalSPED').value, 10) : null,
           valor_total: parseFloat(document.getElementById('modalValor').value) || 0
         };
         const res = await supabaseClient.from('empenhos').update(payload).eq('id', editId);
@@ -1368,6 +1376,7 @@
         const payload = {
           ...baseHeader,
           ne: document.getElementById('modalNE').value,
+          sped: document.getElementById('modalSPED').value ? parseInt(document.getElementById('modalSPED').value, 10) : null,
           valor_total: parseFloat(document.getElementById('modalValor').value) || 0
         };
         const res = await supabaseClient.from('empenhos').insert(payload);
@@ -1377,11 +1386,13 @@
         const payloadArray = [];
         rows.forEach(row => {
           const neVal = row.querySelector('.batch-ne').value.trim();
+          const spedVal = row.querySelector('.batch-sped').value.trim();
           const valorVal = parseFloat(row.querySelector('.batch-valor').value) || 0;
           if (neVal) {
             payloadArray.push({
               ...baseHeader,
               ne: neVal,
+              sped: spedVal ? parseInt(spedVal, 10) : null,
               valor_total: valorVal
             });
           }
@@ -1798,6 +1809,7 @@
       const btnSingle = document.getElementById('btnModeSingle');
       const btnBatch = document.getElementById('btnModeBatch');
       const fieldNE = document.getElementById('fieldSingleNE');
+      const fieldSPED = document.getElementById('fieldSingleSPED');
       const fieldValor = document.getElementById('fieldSingleValor');
       const batchContainer = document.getElementById('batchContainer');
       const inputNE = document.getElementById('modalNE');
@@ -1807,12 +1819,13 @@
         btnSingle.className = 'btn btn-secondary';
         btnBatch.className = 'btn btn-accent';
         fieldNE.style.display = 'none';
+        if (fieldSPED) fieldSPED.style.display = 'none';
         fieldValor.style.display = 'none';
         batchContainer.style.display = 'block';
         
         inputNE.removeAttribute('required');
         inputValor.removeAttribute('required');
-        document.querySelectorAll('#batchRows input').forEach(inp => inp.setAttribute('required', 'required'));
+        document.querySelectorAll('#batchRows input:not(.batch-sped)').forEach(inp => inp.setAttribute('required', 'required'));
         
         const container = document.getElementById('batchRows');
         if (container.children.length === 0) addBatchRow();
@@ -1820,6 +1833,7 @@
         btnSingle.className = 'btn btn-accent';
         btnBatch.className = 'btn btn-secondary';
         fieldNE.style.display = 'block';
+        if (fieldSPED) fieldSPED.style.display = 'block';
         fieldValor.style.display = 'block';
         batchContainer.style.display = 'none';
         
@@ -1837,7 +1851,8 @@
       row.id = rowId;
       row.style.cssText = 'display:flex; gap:10px; align-items:center;';
       row.innerHTML = `
-        <input type="text" placeholder="Nº NE (6 dígitos)" class="batch-ne" ${req} style="flex:1;">
+        <input type="text" placeholder="Nº NE (6 díg)" class="batch-ne" ${req} style="flex:1;">
+        <input type="text" placeholder="SPED (Opcional)" class="batch-sped" maxlength="6" pattern="\\d{6}" style="flex:1;">
         <input type="number" step="0.01" placeholder="Valor (R$)" class="batch-valor" ${req} style="flex:1;">
         <button type="button" class="btn btn-secondary" onclick="removeBatchRow('${rowId}')" style="padding:6px 10px; color:var(--badge-publicar-text);"><i class="fa-solid fa-trash"></i></button>
       `;
@@ -1880,6 +1895,7 @@
 
       document.getElementById('modalAno').value = item.ano;
       document.getElementById('modalNE').value = item.ne;
+      if (document.getElementById('modalSPED')) document.getElementById('modalSPED').value = item.sped || '';
       document.getElementById('modalUGSelect').value = item.ug;
       document.getElementById('modalCategoria').value = item.categoria;
       document.getElementById('modalTipo').value = item.tipo;
