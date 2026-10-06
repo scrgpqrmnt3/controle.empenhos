@@ -358,24 +358,15 @@
         <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 10px;">
           <select id="bulkCategoria">
             <option value="">Alterar Categoria...</option>
-            <option value="UGG">UGG</option><option value="UGP">UGP</option><option value="UGNP">UGNP</option>
-            <option value="DISP">DISP</option><option value="INEX">INEX</option><option value="AJ CUSTO">AJ CUSTO</option>
-            <option value="INDZ TRNSP">INDZ TRNSP</option><option value="PASSG">PASSG</option><option value="DIARIA">DIARIA</option>
-            <option value="ANEE">ANEE</option>
           </select>
           <select id="bulkTipo">
             <option value="">Alterar Tipo...</option>
-            <option value="Ordinário">Ordinário</option><option value="Estimativo">Estimativo</option><option value="Global">Global</option>
           </select>
           <select id="bulkFase">
             <option value="">Alterar Fase...</option>
-            <option value="Empenho">Empenho</option><option value="Liquidado">Liquidado</option>
-            <option value="Pago">Pago</option><option value="Arquivado">Arquivado</option>
-            <option value="Cancelado">Cancelado</option><option value="Anulado">Anulado</option>
           </select>
           <select id="bulkSituacao">
             <option value="">Alterar Situação...</option>
-            <option value="Publicar">Publicar</option><option value="Publicado">Publicado</option><option value="Arquivar">Arquivar</option>
           </select>
         </div>
       </div>
@@ -401,6 +392,35 @@
         </div>
 
         <div class="table-container">
+          <template id="rowTemplate">
+            <tr>
+              <td class="bulk-col col-chk" style="display:none;"><input type="checkbox" class="row-checkbox"></td>
+              <td class="bulk-col col-act" style="display:none;">
+                <div style="display:flex; gap:4px;">
+                  <button class="btn btn-secondary btn-danfe" style="font-size:0.75rem; padding:3px 6px; color:#3b82f6;" title="Gerenciar DANFEs"><i class="fa-solid fa-file-invoice-dollar"></i></button>
+                  <button class="btn btn-secondary btn-edit-restore" style="font-size:0.75rem; padding:3px 6px;" title="Ação"><i class="fa-solid fa-pen"></i></button>
+                  <button class="btn btn-secondary btn-delete" style="font-size:0.75rem; padding:3px 6px; color:#f87171;" title="Excluir"><i class="fa-solid fa-trash"></i></button>
+                </div>
+              </td>
+              <td class="col-ne"><strong class="cell-ne"></strong></td>
+              <td class="col-ug cell-ug"></td>
+              <td class="col-requisitante cell-requisitante"></td>
+              <td class="col-requisicao cell-requisicao"></td>
+              <td class="col-data_emissao cell-emissao"></td>
+              <td class="col-categoria cell-categoria"></td>
+              <td class="col-tipo cell-tipo"></td>
+              <td class="col-processo cell-processo"></td>
+              <td class="col-descricao cell-descricao"></td>
+              <td class="col-uasg cell-uasg"></td>
+              <td class="col-situacao cell-situacao"></td>
+              <td class="col-fase cell-fase"></td>
+              <td class="col-valor cell-valor"></td>
+              <td class="col-saldo cell-saldo"></td>
+              <td class="col-publi cell-publi"></td>
+              <td class="col-responsavel cell-responsavel"></td>
+              <td class="col-atu cell-atu"></td>
+            </tr>
+          </template>
           <table>
             <thead>
               <tr>
@@ -536,54 +556,27 @@
 
           <div>
             <label style="font-size: 0.75rem;">CATEGORIA</label>
-            <select id="modalCategoria" required style="width:100%;">
-              <option value="UGG">UGG</option><option value="UGP">UGP</option><option value="UGNP">UGNP</option>
-              <option value="DISP">DISP</option><option value="INEX">INEX</option><option value="AJ CUSTO">AJ CUSTO</option>
-              <option value="INDZ TRNSP">INDZ TRNSP</option><option value="PASSG">PASSG</option><option value="DIARIA">DIARIA</option>
-              <option value="ANEE">ANEE</option>
-            </select>
+            <select id="modalCategoria" required style="width:100%;"></select>
           </div>
           <div>
             <label style="font-size: 0.75rem;">TIPO</label>
-            <select id="modalTipo" required style="width:100%;">
-              <option value="Ordinário">Ordinário</option><option value="Estimativo">Estimativo</option><option value="Global">Global</option>
-            </select>
+            <select id="modalTipo" required style="width:100%;"></select>
           </div>
           <div><label style="font-size: 0.75rem;">PROCESSO</label><input type="text" id="modalProcesso" style="width: 100%;"></div>
 
           <div style="grid-column: span 2;">
             <label style="font-size: 0.75rem;">DESCRIÇÃO</label>
-            <select id="modalDescricao" required style="width: 100%;">
-              <option value="Alimentação e Aprovisionamento">Alimentação e Aprovisionamento</option>
-              <option value="Bens de Consumo e Estoque">Bens de Consumo e Estoque</option>
-              <option value="Manutenção de Armamento e Equipamentos de Defesa">Manutenção de Armamento e Equipamentos de Defesa</option>
-              <option value="Manutenção de Imóveis e Instalações">Manutenção de Imóveis e Instalações</option>
-              <option value="Manutenção de Máquinas e Climatização">Manutenção de Máquinas e Climatização</option>
-              <option value="Saneamento e Infraestrutura Externa">Saneamento e Infraestrutura Externa</option>
-              <option value="Segurança, EPI e Proteção contra Incêndio">Segurança, EPI e Proteção contra Incêndio</option>
-              <option value="Serviços de Logística e Transporte">Serviços de Logística e Transporte</option>
-              <option value="Serviços Técnicos e TI/Softwares">Serviços Técnicos e TI/Softwares</option>
-              <option value="Serviços Terceirizados e Mão de Obra">Serviços Terceirizados e Mão de Obra</option>
-              <option value="Assistência à Saúde e PASA">Assistência à Saúde e PASA</option>
-              <option value="Despesas com Pessoal e Diárias">Despesas com Pessoal e Diárias</option>
-            </select>
+            <select id="modalDescricao" required style="width: 100%;"></select>
           </div>
           <div><label style="font-size: 0.75rem;">UASG</label><input type="text" id="modalUASG" required style="width: 100%;"></div>
 
           <div>
             <label style="font-size: 0.75rem;">SITUAÇÃO</label>
-            <select id="modalSituacao" required style="width:100%;">
-              <option value="Publicar">Publicar</option><option value="Publicado">Publicado</option>
-              <option value="Arquivar">Arquivar</option>
-            </select>
+            <select id="modalSituacao" required style="width:100%;"></select>
           </div>
           <div>
             <label style="font-size: 0.75rem;">FASE</label>
-            <select id="modalFase" required style="width:100%;">
-              <option value="Empenho">Empenho</option><option value="Liquidado">Liquidado</option>
-              <option value="Pago">Pago</option><option value="Arquivado">Arquivado</option>
-              <option value="Cancelado">Cancelado</option><option value="Anulado">Anulado</option>
-            </select>
+            <select id="modalFase" required style="width:100%;"></select>
           </div>
           <div id="fieldSingleValor"><label style="font-size: 0.75rem;">VALOR TOTAL (R$)</label><input type="number" step="0.01" id="modalValor" required style="width: 100%;"></div>
 
@@ -693,8 +686,76 @@
       draftPontos: 0
     };
 
+    const DICTIONARIES = {
+      categorias: ['UGG', 'UGP', 'UGNP', 'DISP', 'INEX', 'AJ CUSTO', 'INDZ TRNSP', 'PASSG', 'DIARIA', 'ANEE'],
+      tipos: ['Ordinário', 'Estimativo', 'Global'],
+      fases: ['Empenho', 'Liquidado', 'Pago', 'Arquivado', 'Cancelado', 'Anulado'],
+      situacoes: ['Publicar', 'Publicado', 'Arquivar'],
+      descricoes: [
+        'Alimentação e Aprovisionamento', 'Bens de Consumo e Estoque',
+        'Manutenção de Armamento e Equipamentos de Defesa', 'Manutenção de Imóveis e Instalações',
+        'Manutenção de Máquinas e Climatização', 'Saneamento e Infraestrutura Externa',
+        'Segurança, EPI e Proteção contra Incêndio', 'Serviços de Logística e Transporte',
+        'Serviços Técnicos e TI/Softwares', 'Serviços Terceirizados e Mão de Obra',
+        'Assistência à Saúde e PASA', 'Despesas com Pessoal e Diárias'
+      ]
+    };
+
+    function populateStaticSelects() {
+      const buildOptions = (optionsArray) => {
+        const frag = document.createDocumentFragment();
+        optionsArray.forEach(opt => {
+          const el = document.createElement('option');
+          el.value = opt;
+          el.textContent = opt;
+          frag.appendChild(el);
+        });
+        return frag;
+      };
+
+      document.getElementById('modalCategoria').appendChild(buildOptions(DICTIONARIES.categorias));
+      document.getElementById('modalTipo').appendChild(buildOptions(DICTIONARIES.tipos));
+      document.getElementById('modalFase').appendChild(buildOptions(DICTIONARIES.fases));
+      document.getElementById('modalSituacao').appendChild(buildOptions(DICTIONARIES.situacoes));
+      document.getElementById('modalDescricao').appendChild(buildOptions(DICTIONARIES.descricoes));
+      
+      const bulkCat = document.getElementById('bulkCategoria');
+      if(bulkCat) bulkCat.appendChild(buildOptions(DICTIONARIES.categorias));
+      const bulkTipo = document.getElementById('bulkTipo');
+      if(bulkTipo) bulkTipo.appendChild(buildOptions(DICTIONARIES.tipos));
+      const bulkFase = document.getElementById('bulkFase');
+      if(bulkFase) bulkFase.appendChild(buildOptions(DICTIONARIES.fases));
+      const bulkSit = document.getElementById('bulkSituacao');
+      if(bulkSit) bulkSit.appendChild(buildOptions(DICTIONARIES.situacoes));
+    }
+
     document.addEventListener("DOMContentLoaded", () => {
+      populateStaticSelects();
       checkSession(); 
+      
+      // Delegação de Eventos para a Tabela Principal (Melhoria de Performance)
+      const tbody = document.getElementById('neTableBody');
+      if (tbody) {
+        tbody.addEventListener('click', (e) => {
+          const btn = e.target.closest('button');
+          const chk = e.target.closest('.row-checkbox');
+          if (!btn && !chk) return;
+          
+          const tr = e.target.closest('tr');
+          if (!tr || !tr.dataset.id) return;
+          const rowId = tr.dataset.id;
+
+          if (chk) {
+            toggleSelectRow(rowId, chk.checked);
+            return;
+          }
+
+          if (btn.classList.contains('btn-danfe')) openDanfeModal(rowId);
+          else if (btn.classList.contains('btn-edit-restore')) openEditModal(rowId);
+          else if (btn.classList.contains('btn-restore')) restoreSingleNE(rowId);
+          else if (btn.classList.contains('btn-delete')) deleteSingleNE(rowId);
+        });
+      } 
       
       // Controle do menu lateral fluido (Hover)
       const sidebar = document.getElementById('sidebar');
@@ -1072,6 +1133,9 @@
 
     function renderTable(data) {
       const tbody = document.getElementById('neTableBody');
+      const template = document.getElementById('rowTemplate');
+      const fragment = document.createDocumentFragment();
+      
       tbody.innerHTML = '';
       const total = data.length;
       let start = 0; let end = total;
@@ -1084,41 +1148,62 @@
 
       const pageData = data.slice(start, end);
       pageData.forEach((item) => {
-        const isChecked = state.selectedIds.has(item.id);
-        const tr = document.createElement('tr');
-        tr.innerHTML = `
-          <td class="bulk-col col-chk" style="${state.showBulkPanel ? '' : 'display:none;'}"><input type="checkbox" ${isChecked ? 'checked' : ''} onchange="toggleSelectRow('${item.id}', this.checked)"></td>
-          <td class="bulk-col col-act" style="${state.showBulkPanel ? '' : 'display:none;'}">
-            <div style="display:flex; gap:4px;">
-              <button class="btn btn-secondary" style="font-size:0.75rem; padding:3px 6px; color:#3b82f6;" onclick="openDanfeModal('${item.id}')" title="Gerenciar DANFEs"><i class="fa-solid fa-file-invoice-dollar"></i></button>
-              ${state.showLixeira 
-                ? `<button class="btn btn-secondary" style="font-size:0.75rem; padding:3px 6px; color:#10b981;" onclick="restoreSingleNE('${item.id}')" title="Restaurar"><i class="fa-solid fa-arrow-rotate-left"></i></button>
-                   <button class="btn btn-secondary" style="font-size:0.75rem; padding:3px 6px; color:#f87171;" onclick="deleteSingleNE('${item.id}')" title="Purgar Definitivamente"><i class="fa-solid fa-fire"></i></button>`
-                : `<button class="btn btn-secondary" style="font-size:0.75rem; padding:3px 6px;" onclick="openEditModal('${item.id}')" title="Editar"><i class="fa-solid fa-pen"></i></button>
-                   <button class="btn btn-secondary" style="font-size:0.75rem; padding:3px 6px; color:#f87171;" onclick="deleteSingleNE('${item.id}')" title="Excluir"><i class="fa-solid fa-trash"></i></button>`
-              }
-            </div>
-          </td>
-          <td class="col-ne"><strong>${item.ne}</strong></td>
-          <td class="col-ug">${item.ug}</td>
-          <td class="col-requisitante">${item.requisitante || '-'}</td>
-          <td class="col-requisicao">${item.requisicao || '-'}</td>
-          <td class="col-data_emissao">${item.data_emissao || '-'}</td>
-          <td class="col-categoria">${item.categoria}</td>
-          <td class="col-tipo">${item.tipo}</td>
-          <td class="col-processo">${item.processo}</td>
-          <td class="col-descricao">${item.descricao}</td>
-          <td class="col-uasg">${item.uasg}</td>
-          <td class="col-situacao"><span class="badge ${item.situacao === 'Publicado' ? 'badge-publicado' : 'badge-publicar'}">${item.situacao}</span></td>
-          <td class="col-fase">${item.fase}</td>
-          <td class="col-valor">R$ ${(item.valor || 0).toLocaleString('pt-BR', {minimumFractionDigits: 2})}</td>
-          <td class="col-saldo"><strong style="color: ${item.saldo < 0 ? '#f87171' : (item.saldo === 0 ? '#10b981' : 'inherit')}">R$ ${(item.saldo || 0).toLocaleString('pt-BR', {minimumFractionDigits: 2})}</strong></td>
-          <td class="col-publi">${item.publi}</td>
-          <td class="col-responsavel">${item.responsavel}</td>
-          <td class="col-atu">${item.atu}</td>
-        `;
-        tbody.appendChild(tr);
+        const clone = template.content.cloneNode(true);
+        const tr = clone.querySelector('tr');
+        
+        tr.dataset.id = item.id;
+        
+        // Controles de Lote e Lixeira
+        const chk = clone.querySelector('.row-checkbox');
+        chk.checked = state.selectedIds.has(item.id);
+        
+        const btnEditRest = clone.querySelector('.btn-edit-restore');
+        const btnDel = clone.querySelector('.btn-delete');
+        
+        if (state.showBulkPanel) {
+          clone.querySelectorAll('.bulk-col').forEach(el => el.style.display = 'table-cell');
+        }
+        
+        if (state.showLixeira) {
+          btnEditRest.innerHTML = '<i class="fa-solid fa-arrow-rotate-left"></i>';
+          btnEditRest.title = 'Restaurar';
+          btnEditRest.style.color = '#10b981';
+          btnEditRest.classList.replace('btn-edit-restore', 'btn-restore');
+          btnDel.innerHTML = '<i class="fa-solid fa-fire"></i>';
+          btnDel.title = 'Purgar Definitivamente';
+        }
+
+        // Injeção de Dados Textuais Seguros (textContent evita XSS)
+        clone.querySelector('.cell-ne').textContent = item.ne;
+        clone.querySelector('.cell-ug').textContent = item.ug;
+        clone.querySelector('.cell-requisitante').textContent = item.requisitante || '-';
+        clone.querySelector('.cell-requisicao').textContent = item.requisicao || '-';
+        clone.querySelector('.cell-emissao').textContent = item.data_emissao || '-';
+        clone.querySelector('.cell-categoria').textContent = item.categoria;
+        clone.querySelector('.cell-tipo').textContent = item.tipo;
+        clone.querySelector('.cell-processo').textContent = item.processo;
+        clone.querySelector('.cell-descricao').textContent = item.descricao;
+        clone.querySelector('.cell-uasg').textContent = item.uasg;
+        
+        const sitSpan = document.createElement('span');
+        sitSpan.className = `badge ${item.situacao === 'Publicado' ? 'badge-publicado' : 'badge-publicar'}`;
+        sitSpan.textContent = item.situacao;
+        clone.querySelector('.cell-situacao').appendChild(sitSpan);
+        
+        clone.querySelector('.cell-fase').textContent = item.fase;
+        clone.querySelector('.cell-valor').textContent = `R$ ${(item.valor || 0).toLocaleString('pt-BR', {minimumFractionDigits: 2})}`;
+        
+        const saldoEl = clone.querySelector('.cell-saldo');
+        saldoEl.innerHTML = `<strong style="color: ${item.saldo < 0 ? '#f87171' : (item.saldo === 0 ? '#10b981' : 'inherit')}">R$ ${(item.saldo || 0).toLocaleString('pt-BR', {minimumFractionDigits: 2})}</strong>`;
+        
+        clone.querySelector('.cell-publi').textContent = item.publi;
+        clone.querySelector('.cell-responsavel').textContent = item.responsavel;
+        clone.querySelector('.cell-atu').textContent = item.atu;
+
+        fragment.appendChild(clone);
       });
+      
+      tbody.appendChild(fragment);
 
       applyColumnVisibilityStyles();
 
