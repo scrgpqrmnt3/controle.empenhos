@@ -358,27 +358,17 @@
         <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 10px;">
           <select id="bulkCategoria">
             <option value="">Alterar Categoria...</option>
-            <option value="UGG">UGG</option><option value="UGP">UGP</option><option value="UGNP">UGNP</option>
-            <option value="DISP">DISP</option><option value="INEX">INEX</option><option value="AJ CUSTO">AJ CUSTO</option>
-            <option value="INDZ TRNSP">INDZ TRNSP</option><option value="PASSG">PASSG</option><option value="DIARIA">DIARIA</option>
-            <option value="ANEE">ANEE</option>
           </select>
           <select id="bulkTipo">
             <option value="">Alterar Tipo...</option>
-            <option value="Ordinário">Ordinário</option><option value="Estimativo">Estimativo</option><option value="Global">Global</option>
           </select>
           <select id="bulkFase">
             <option value="">Alterar Fase...</option>
-            <option value="Empenho">Empenho</option><option value="Liquidado">Liquidado</option>
-            <option value="Pago">Pago</option><option value="Arquivado">Arquivado</option>
-            <option value="Cancelado">Cancelado</option><option value="Anulado">Anulado</option>
           </select>
           <select id="bulkSituacao">
             <option value="">Alterar Situação...</option>
-            <option value="Publicar">Publicar</option><option value="Publicado">Publicado</option><option value="Arquivar">Arquivar</option>
           </select>
         </div>
-      </div>
 
       <div class="glass" style="border-radius: 12px; overflow: hidden;">
         <div class="pagination-bar">
@@ -536,54 +526,27 @@
 
           <div>
             <label style="font-size: 0.75rem;">CATEGORIA</label>
-            <select id="modalCategoria" required style="width:100%;">
-              <option value="UGG">UGG</option><option value="UGP">UGP</option><option value="UGNP">UGNP</option>
-              <option value="DISP">DISP</option><option value="INEX">INEX</option><option value="AJ CUSTO">AJ CUSTO</option>
-              <option value="INDZ TRNSP">INDZ TRNSP</option><option value="PASSG">PASSG</option><option value="DIARIA">DIARIA</option>
-              <option value="ANEE">ANEE</option>
-            </select>
+            <select id="modalCategoria" required style="width:100%;"></select>
           </div>
           <div>
             <label style="font-size: 0.75rem;">TIPO</label>
-            <select id="modalTipo" required style="width:100%;">
-              <option value="Ordinário">Ordinário</option><option value="Estimativo">Estimativo</option><option value="Global">Global</option>
-            </select>
+            <select id="modalTipo" required style="width:100%;"></select>
           </div>
           <div><label style="font-size: 0.75rem;">PROCESSO</label><input type="text" id="modalProcesso" style="width: 100%;"></div>
 
           <div style="grid-column: span 2;">
             <label style="font-size: 0.75rem;">DESCRIÇÃO</label>
-            <select id="modalDescricao" required style="width: 100%;">
-              <option value="Alimentação e Aprovisionamento">Alimentação e Aprovisionamento</option>
-              <option value="Bens de Consumo e Estoque">Bens de Consumo e Estoque</option>
-              <option value="Manutenção de Armamento e Equipamentos de Defesa">Manutenção de Armamento e Equipamentos de Defesa</option>
-              <option value="Manutenção de Imóveis e Instalações">Manutenção de Imóveis e Instalações</option>
-              <option value="Manutenção de Máquinas e Climatização">Manutenção de Máquinas e Climatização</option>
-              <option value="Saneamento e Infraestrutura Externa">Saneamento e Infraestrutura Externa</option>
-              <option value="Segurança, EPI e Proteção contra Incêndio">Segurança, EPI e Proteção contra Incêndio</option>
-              <option value="Serviços de Logística e Transporte">Serviços de Logística e Transporte</option>
-              <option value="Serviços Técnicos e TI/Softwares">Serviços Técnicos e TI/Softwares</option>
-              <option value="Serviços Terceirizados e Mão de Obra">Serviços Terceirizados e Mão de Obra</option>
-              <option value="Assistência à Saúde e PASA">Assistência à Saúde e PASA</option>
-              <option value="Despesas com Pessoal e Diárias">Despesas com Pessoal e Diárias</option>
-            </select>
+            <select id="modalDescricao" required style="width: 100%;"></select>
           </div>
           <div><label style="font-size: 0.75rem;">UASG</label><input type="text" id="modalUASG" required style="width: 100%;"></div>
 
           <div>
             <label style="font-size: 0.75rem;">SITUAÇÃO</label>
-            <select id="modalSituacao" required style="width:100%;">
-              <option value="Publicar">Publicar</option><option value="Publicado">Publicado</option>
-              <option value="Arquivar">Arquivar</option>
-            </select>
+            <select id="modalSituacao" required style="width:100%;"></select>
           </div>
           <div>
             <label style="font-size: 0.75rem;">FASE</label>
-            <select id="modalFase" required style="width:100%;">
-              <option value="Empenho">Empenho</option><option value="Liquidado">Liquidado</option>
-              <option value="Pago">Pago</option><option value="Arquivado">Arquivado</option>
-              <option value="Cancelado">Cancelado</option><option value="Anulado">Anulado</option>
-            </select>
+            <select id="modalFase" required style="width:100%;"></select>
           </div>
           <div id="fieldSingleValor"><label style="font-size: 0.75rem;">VALOR TOTAL (R$)</label><input type="number" step="0.01" id="modalValor" required style="width: 100%;"></div>
 
@@ -693,7 +656,51 @@
       draftPontos: 0
     };
 
+    const DICTIONARIES = {
+      categorias: ['UGG', 'UGP', 'UGNP', 'DISP', 'INEX', 'AJ CUSTO', 'INDZ TRNSP', 'PASSG', 'DIARIA', 'ANEE'],
+      tipos: ['Ordinário', 'Estimativo', 'Global'],
+      fases: ['Empenho', 'Liquidado', 'Pago', 'Arquivado', 'Cancelado', 'Anulado'],
+      situacoes: ['Publicar', 'Publicado', 'Arquivar'],
+      descricoes: [
+        'Alimentação e Aprovisionamento', 'Bens de Consumo e Estoque',
+        'Manutenção de Armamento e Equipamentos de Defesa', 'Manutenção de Imóveis e Instalações',
+        'Manutenção de Máquinas e Climatização', 'Saneamento e Infraestrutura Externa',
+        'Segurança, EPI e Proteção contra Incêndio', 'Serviços de Logística e Transporte',
+        'Serviços Técnicos e TI/Softwares', 'Serviços Terceirizados e Mão de Obra',
+        'Assistência à Saúde e PASA', 'Despesas com Pessoal e Diárias'
+      ]
+    };
+
+    function populateStaticSelects() {
+      const buildOptions = (optionsArray) => {
+        const frag = document.createDocumentFragment();
+        optionsArray.forEach(opt => {
+          const el = document.createElement('option');
+          el.value = opt;
+          el.textContent = opt;
+          frag.appendChild(el);
+        });
+        return frag;
+      };
+
+      document.getElementById('modalCategoria').appendChild(buildOptions(DICTIONARIES.categorias));
+      document.getElementById('modalTipo').appendChild(buildOptions(DICTIONARIES.tipos));
+      document.getElementById('modalFase').appendChild(buildOptions(DICTIONARIES.fases));
+      document.getElementById('modalSituacao').appendChild(buildOptions(DICTIONARIES.situacoes));
+      document.getElementById('modalDescricao').appendChild(buildOptions(DICTIONARIES.descricoes));
+      
+      const bulkCat = document.getElementById('bulkCategoria');
+      if(bulkCat) bulkCat.appendChild(buildOptions(DICTIONARIES.categorias));
+      const bulkTipo = document.getElementById('bulkTipo');
+      if(bulkTipo) bulkTipo.appendChild(buildOptions(DICTIONARIES.tipos));
+      const bulkFase = document.getElementById('bulkFase');
+      if(bulkFase) bulkFase.appendChild(buildOptions(DICTIONARIES.fases));
+      const bulkSit = document.getElementById('bulkSituacao');
+      if(bulkSit) bulkSit.appendChild(buildOptions(DICTIONARIES.situacoes));
+    }
+
     document.addEventListener("DOMContentLoaded", () => {
+      populateStaticSelects();
       checkSession(); 
       
       // Controle do menu lateral fluido (Hover)
