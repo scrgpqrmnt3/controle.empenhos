@@ -486,31 +486,55 @@
     <section id="tab-metas" class="tab-content">
       <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 20px;">
         <div class="glass controls-card">
-          <h3 style="margin-bottom: 15px; font-size: 1rem; display: flex; align-items: center; gap: 8px;"><i class="fa-solid fa-folder-open text-primary"></i> Estoque de DANFEs em Pasta</h3>
+          <h3 style="margin-bottom: 15px; font-size: 1rem; display: flex; align-items: center; gap: 8px;"><i class="fa-solid fa-folder-open text-primary"></i> Estoque de DANFEs em Pasta (PC)</h3>
           <div style="margin-bottom: 15px;">
-            <label style="font-size: 0.8rem; font-weight: 600;">Total de PDFs Pendentes na Pasta (Computador):</label>
+            <label style="font-size: 0.8rem; font-weight: 600;">Total de PDFs Pendentes:</label>
             <input type="number" id="danfeStockInput" min="0" style="width: 100%; margin-top: 5px;" placeholder="Ex: 350">
+            <p style="font-size: 0.75rem; color: var(--text-muted); margin-top: 5px;">O registro de novas DANFEs nos Empenhos deduz esse saldo automaticamente.</p>
           </div>
-          <button class="btn btn-accent" style="width: 100%;" onclick="saveDanfeStock()"><i class="fa-solid fa-rotate"></i> Atualizar Saldo da Pasta</button>
+          <button class="btn btn-accent" style="width: 100%;" onclick="saveDanfeStock()"><i class="fa-solid fa-rotate"></i> Configuração Manual de Saldo</button>
         </div>
 
         <div class="glass controls-card">
-          <h3 style="margin-bottom: 15px; font-size: 1rem; display: flex; align-items: center; gap: 8px;"><i class="fa-solid fa-plus-circle text-success"></i> Log de Publicação Diária (DANFEs)</h3>
-          <form onsubmit="logDanfeProduction(event)">
-            <div style="margin-bottom: 12px;">
-              <label style="font-size: 0.8rem;">Quantidade de DANFEs Postadas Hoje no DSpace:</label>
-              <input type="number" id="danfeQtyLog" min="1" required style="width: 100%; margin-top: 4px;">
-            </div>
-            <button type="submit" class="btn btn-accent" style="width: 100%;"><i class="fa-solid fa-check"></i> Registrar Produção do Turno</button>
-          </form>
+          <h3 style="margin-bottom: 15px; font-size: 1rem; display: flex; align-items: center; gap: 8px;"><i class="fa-solid fa-chart-line text-success"></i> Desempenho (Meta Semanal: 50)</h3>
+          <div id="danfePerformanceMetrics">
+            <!-- Renderizado dinamicamente -->
+          </div>
         </div>
       </div>
 
       <div class="glass controls-card" style="margin-top: 20px;">
-        <h3 style="margin-bottom: 15px; font-size: 1rem; display: flex; align-items: center; gap: 8px;"><i class="fa-solid fa-chart-line"></i> Desempenho da Equipe e Quitação de Passivo</h3>
-        <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 15px;">Acompanhamento de médias por usuário e tempo estimado para zerar PDFs acumulados.</p>
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; flex-wrap: wrap; gap: 10px;">
+          <h3 style="font-size: 1rem; display: flex; align-items: center; gap: 8px;"><i class="fa-solid fa-list-check"></i> Histórico de Produção & Fluxo de DANFEs</h3>
+          <div style="display: flex; gap: 10px;">
+             <input type="date" id="filtroDataDanfe" class="col-filter-input" onchange="renderDanfeMetrics()" title="Filtrar por data">
+             <select id="filtroRespDanfe" class="col-filter-select" onchange="renderDanfeMetrics()" title="Filtrar por responsável">
+                <option value="">Todos os Operadores</option>
+             </select>
+          </div>
+        </div>
         
-        <div id="danfePerformanceMetrics"></div>
+        <div class="table-container" style="max-height: 400px;">
+          <table style="width: 100%; border-collapse: collapse; font-size: 0.8rem;">
+            <thead>
+              <tr>
+                <th>Nº NE</th>
+                <th>Nº DANFE</th>
+                <th>Via</th>
+                <th>Valor DANFE</th>
+                <th>Soma Vias (Liq.)</th>
+                <th>Valor NE</th>
+                <th>Saldo NE</th>
+                <th>Registro</th>
+                <th>Responsável</th>
+                <th style="text-align:center;">Ação</th>
+              </tr>
+            </thead>
+            <tbody id="globalDanfeTableBody">
+              <!-- Renderizado dinamicamente -->
+            </tbody>
+          </table>
+        </div>
       </div>
     </section>
 
@@ -613,26 +637,30 @@
       
       <div style="background: rgba(0,0,0,0.15); padding: 12px; border-radius: 8px; margin-bottom: 15px; display: flex; justify-content: space-between;">
         <div><span style="font-size: 0.75rem; color: var(--text-muted);">VALOR TOTAL DA NE:</span><br><strong id="danfeModalValorTotal" style="color: var(--text-main);">R$ 0,00</strong></div>
-        <div><span style="font-size: 0.75rem; color: var(--text-muted);">SALDO RESTANTE:</span><br><strong id="danfeModalSaldo" style="color: var(--accent);">R$ 0,00</strong></div>
+        <div><span style="font-size: 0.75rem; color: var(--text-muted);">SALDO RESTANTE (Via Liq.):</span><br><strong id="danfeModalSaldo" style="color: var(--accent);">R$ 0,00</strong></div>
       </div>
 
       <div style="margin-bottom: 15px;">
-        <label style="font-size: 0.85rem; font-weight: 600;">Adicionar Nova DANFE (Padrão: Liquidação)</label>
+        <label style="font-size: 0.85rem; font-weight: 600;">Registrar Publicação de DANFE no DSpace</label>
         <div style="display: flex; gap: 10px; margin-top: 5px;">
-          <input type="text" id="novaDanfeNumero" placeholder="Nº DANFE" style="flex: 1;">
-          <input type="number" id="novaDanfeValor" step="0.01" placeholder="Valor (R$)" style="flex: 1;">
-          <button type="button" class="btn btn-accent" onclick="addDanfeToNE()"><i class="fa-solid fa-plus"></i> Registrar</button>
+          <input type="text" id="novaDanfeNumero" placeholder="Nº DANFE" style="flex: 1.5;">
+          <input type="number" id="novaDanfeValor" step="0.01" placeholder="Valor (R$)" style="flex: 1.5;">
+          <select id="novaDanfeVia" style="flex: 1; padding: 8px; border-radius: 6px;">
+             <option value="Liquidação">Liquidação</option>
+             <option value="Pagamento">Pagamento</option>
+          </select>
+          <button type="button" id="btnSalvarDanfe" class="btn btn-accent" onclick="addDanfeToNE()"><i class="fa-solid fa-plus"></i> Publicar</button>
         </div>
+        <p style="font-size: 0.7rem; color: var(--text-muted); margin-top: 6px;">O registro já efetiva o desconto no saldo da pasta local e entra para a sua meta.</p>
       </div>
 
       <div style="border-top: 1px solid var(--border-color); padding-top: 15px;">
-        <label style="font-size: 0.85rem; font-weight: 600; margin-bottom: 10px; display: block;">DANFEs Registradas (Rascunho)</label>
+        <label style="font-size: 0.85rem; font-weight: 600; margin-bottom: 10px; display: block;">DANFEs Vinculadas a este Empenho</label>
         <div id="danfeListContainer" style="max-height: 250px; overflow-y: auto;"></div>
       </div>
 
-      <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:20px;">
-        <button type="button" class="btn btn-secondary" onclick="closeDanfeModal()">Cancelar</button>
-        <button type="button" class="btn btn-accent" onclick="saveDanfeDraft()"><i class="fa-solid fa-check"></i> Salvar Alterações</button>
+      <div style="display:flex; justify-content:flex-end; margin-top:20px;">
+        <button type="button" class="btn btn-secondary" onclick="closeDanfeModal()">Fechar</button>
       </div>
     </div>
   </div>
@@ -675,7 +703,7 @@
       theme: localStorage.getItem('ne_theme') || 'dark',
       session: JSON.parse(localStorage.getItem('ne_session')) || null,
       danfeStock: parseInt(localStorage.getItem('ne_danfe_stock')) || 0,
-      danfeLogs: JSON.parse(localStorage.getItem('ne_danfe_logs')) || [],
+      danfeLogs: [], // Log de Produção Matemática (alimentado pelo banco)
       columnFilters: {},
       selectedIds: new Set(),
       currentPage: 1,
@@ -686,8 +714,9 @@
       showBulkPanel: false,
       showLixeira: false,
       nes: [],
-      draftDanfes: [],
-      draftPontos: 0
+      danfesGlobal: [], // Central unificada de DANFEs
+      draftDanfes: [], // Lista local temporária do modal por empenho
+      metaSemanal: 50
     };
 
     const DICTIONARIES = {
@@ -803,21 +832,32 @@
     async function fetchSheetData() {
       updateSyncStatus('syncing', 'Sincronizando com Supabase...');
       try {
-        const { data, error } = await supabaseClient
-          .from('empenhos').select('*').order('ano', { ascending: false });
+        // Fetch paralelo das duas tabelas usando a arquitetura relacional
+        const [empenhosRes, danfesRes] = await Promise.all([
+          supabaseClient.from('empenhos').select('*').order('ano', { ascending: false }),
+          supabaseClient.from('danfes').select('*').order('registro_data', { ascending: false })
+        ]);
         
-        if (error) throw error;
+        if (empenhosRes.error) throw empenhosRes.error;
+        if (danfesRes.error) throw danfesRes.error;
 
-        state.nes = data.map(row => {
-          const danfes = typeof row.danfes_registradas === 'string' ? JSON.parse(row.danfes_registradas) : (row.danfes_registradas || []);
-          const totalDanfesPagas = danfes.filter(d => d.pagamento).reduce((acc, curr) => acc + (Number(curr.valor) || 0), 0);
+        state.danfesGlobal = danfesRes.data;
+
+        state.nes = empenhosRes.data.map(row => {
+          // Filtra as DANFEs desta NE
+          const danfesDaNe = state.danfesGlobal.filter(d => d.empenho_id === row.id);
+          
+          // Regra de Negócio: O cálculo de saldo/amortização considera APENAS as vias de Liquidação
+          const somaLiquidacao = danfesDaNe
+            .filter(d => d.via === 'Liquidação')
+            .reduce((acc, curr) => acc + (Number(curr.valor) || 0), 0);
+            
           const valTotal = Number(row.valor_total) || 0;
           
           return {
             id: row.id,
             ano: row.ano,
             ne: row.ne,
-            sped: row.sped ? String(row.sped).padStart(6, '0') : null,
             ug: row.ug,
             requisitante: row.requisitante || '',
             requisicao: row.requisicao || '',
@@ -830,12 +870,12 @@
             situacao: row.situacao,
             fase: row.fase,
             valor: valTotal,
-            saldo: valTotal - totalDanfesPagas,
+            saldo: valTotal - somaLiquidacao, // Novo cálculo de saldo
             publi: formatDate(row.publi),
             responsavel: row.responsavel || '',
             atu: formatDate(row.atu),
             ativo: row.ativo,
-            danfes_registradas: danfes
+            danfes_relacionais: danfesDaNe // Referência em memória para facilitar o modal
           };
         });
 
@@ -1424,19 +1464,18 @@
       if (!item) return;
       document.getElementById('danfeModalEditId').value = item.id;
       document.getElementById('danfeModalNE').textContent = item.ne;
+      
+      // Reseta os inputs
+      document.getElementById('novaDanfeNumero').value = '';
+      document.getElementById('novaDanfeValor').value = '';
+      document.getElementById('novaDanfeVia').value = 'Liquidação';
+      
       document.getElementById('danfeModal').style.display = 'flex';
-      
-      // Carrega os dados oficiais para a memória temporária do navegador
-      state.draftDanfes = item.danfes_registradas ? JSON.parse(JSON.stringify(item.danfes_registradas)) : [];
-      state.draftPontos = 0;
-      
       renderDanfeList();
     }
 
     function closeDanfeModal() {
       document.getElementById('danfeModal').style.display = 'none';
-      state.draftDanfes = [];
-      state.draftPontos = 0;
     }
 
     function renderDanfeList() {
@@ -1444,125 +1483,103 @@
       const id = document.getElementById('danfeModalEditId').value;
       const item = state.nes.find(n => n.id === id);
       const totalNe = Number(item.valor) || 0;
-      let somaDanfesPagas = 0;
       
+      // Extrai a lista do estado global que pertence a essa NE
+      const listaDanfes = state.danfesGlobal.filter(d => d.empenho_id === id);
+      
+      let somaLiquidacao = 0;
       container.innerHTML = '';
-      if (state.draftDanfes.length === 0) {
-        container.innerHTML = '<div style="font-size:0.8rem; color:var(--text-muted); text-align:center; padding: 10px;">Nenhuma DANFE registrada no rascunho.</div>';
+      
+      if (listaDanfes.length === 0) {
+        container.innerHTML = '<div style="font-size:0.8rem; color:var(--text-muted); text-align:center; padding: 10px;">Nenhuma DANFE vinculada a esta Nota de Empenho.</div>';
       } else {
-        state.draftDanfes.forEach((d, idx) => {
-          if (d.pagamento) somaDanfesPagas += Number(d.valor);
+        listaDanfes.forEach((d) => {
+          if (d.via === 'Liquidação') somaLiquidacao += Number(d.valor);
           
-          // Layout de Estado Único (Opção A)
-          const btnPagamento = d.pagamento 
-            ? `<span class="badge badge-publicado"><i class="fa-solid fa-check-double"></i> Pago</span>` 
-            : `<button type="button" class="btn btn-secondary" onclick="registerPagamentoDraft(${idx})" style="padding:4px 8px; font-size:0.7rem;"><i class="fa-solid fa-money-bill-wave"></i> Pagar</button>`;
-            
+          const corBadge = d.via === 'Liquidação' ? 'badge-publicar' : 'badge-publicado';
+          
           container.innerHTML += `
             <div style="display:flex; justify-content:space-between; align-items:center; padding: 8px 12px; background: rgba(255,255,255,0.03); border: 1px solid var(--border-color); border-radius: 6px; margin-bottom: 8px;">
               <div>
-                <strong style="font-size: 0.85rem;">Nº ${d.numero}</strong> <span class="badge badge-publicar" style="margin-left: 5px;">Liquidação</span><br>
+                <strong style="font-size: 0.85rem;">Nº ${d.numero}</strong> <span class="badge ${corBadge}" style="margin-left: 5px;">${d.via}</span><br>
                 <span style="font-size: 0.75rem; color: var(--text-muted);">R$ ${Number(d.valor).toLocaleString('pt-BR', {minimumFractionDigits: 2})}</span>
               </div>
-              <div style="display:flex; gap:12px; align-items:center;">
-                ${btnPagamento}
-                <button type="button" class="btn btn-secondary" onclick="removeDanfeDraft(${idx})" style="padding:4px 8px; font-size:0.7rem; color:#f87171;"><i class="fa-solid fa-trash"></i></button>
+              <div style="display:flex; gap:12px; align-items:center; font-size: 0.75rem; color: var(--text-muted);">
+                <i class="fa-solid fa-user"></i> ${d.responsavel || 'Desconhecido'}
+                <button type="button" class="btn btn-secondary" onclick="deleteDanfe('${d.id}')" style="padding:4px 8px; font-size:0.7rem; color:#f87171;" title="Excluir"><i class="fa-solid fa-trash"></i></button>
               </div>
             </div>
           `;
         });
       }
       
-      const saldo = totalNe - somaDanfesPagas;
+      const saldo = totalNe - somaLiquidacao;
       document.getElementById('danfeModalValorTotal').textContent = `R$ ${totalNe.toLocaleString('pt-BR', {minimumFractionDigits: 2})}`;
       document.getElementById('danfeModalSaldo').textContent = `R$ ${saldo.toLocaleString('pt-BR', {minimumFractionDigits: 2})}`;
       document.getElementById('danfeModalSaldo').style.color = saldo < 0 ? '#f87171' : (saldo === 0 ? '#10b981' : 'var(--accent)');
     }
 
-    function addDanfeToNE() {
+    async function addDanfeToNE() {
       if (!isEditorOrAdmin()) return;
+      
+      const btn = document.getElementById('btnSalvarDanfe');
+      const empenhoId = document.getElementById('danfeModalEditId').value;
       const numero = document.getElementById('novaDanfeNumero').value.trim();
       const valor = parseFloat(document.getElementById('novaDanfeValor').value);
+      const via = document.getElementById('novaDanfeVia').value;
       
       if (!numero || isNaN(valor)) {
         appConfirm('Preencha o número e um valor válido.');
         return;
       }
-      
-      // Insere no rascunho com a flag de produtividade marcada
-      state.draftDanfes.push({ 
-        numero, 
-        valor, 
-        pagamento: false, 
-        meta_liquidacao_registrada: true, 
-        meta_pagamento_registrada: false 
-      });
-      
-      state.draftPontos += 1; // +1 Ponto de Produção em Rascunho
-      
-      document.getElementById('novaDanfeNumero').value = '';
-      document.getElementById('novaDanfeValor').value = '';
-      renderDanfeList();
-    }
 
-    function registerPagamentoDraft(index) {
-      if (!isEditorOrAdmin()) return;
-      
-      state.draftDanfes[index].pagamento = true;
-      
-      // Se este pagamento ainda não gerou pontos no rascunho, pontua e trava a flag
-      if (!state.draftDanfes[index].meta_pagamento_registrada) {
-         state.draftDanfes[index].meta_pagamento_registrada = true;
-         state.draftPontos += 1;
+      btn.disabled = true;
+      btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>';
+
+      // 1. Grava a DANFE na nova tabela
+      const { data: insertedDanfe, error: errDanfe } = await supabaseClient.from('danfes').insert([{
+        empenho_id: empenhoId,
+        numero: numero,
+        via: via,
+        valor: valor,
+        responsavel: state.session.nome
+      }]).select();
+
+      if (errDanfe) {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fa-solid fa-plus"></i> Publicar';
+        return appConfirm('Erro ao registrar DANFE: ' + errDanfe.message);
       }
+
+      // 2. Pontua a produção automaticamente e desconta do saldo
+      const novoEstoque = Math.max(0, state.danfeStock - 1);
+      const payloadMeta = {
+        usuario_nome: state.session.nome,
+        pasta_local_saldo: novoEstoque,
+        quantidade_publicada: 1,
+        tipo_registro: 'TURNO'
+      };
       
-      renderDanfeList();
+      await supabaseClient.from('metas_producao').insert([payloadMeta]);
+      
+      btn.disabled = false;
+      btn.innerHTML = '<i class="fa-solid fa-plus"></i> Publicar';
+      
+      // Atualiza o estado da aplicação
+      await fetchSheetData();
+      renderDanfeList(); // Re-renderiza o modal atualizado
     }
 
-    async function removeDanfeDraft(index) {
+    async function deleteDanfe(idDanfe) {
       if (!isEditorOrAdmin()) return;
-      const confirmado = await appConfirm('Deseja remover esta DANFE do rascunho?');
+      const confirmado = await appConfirm('Tem certeza que deseja excluir este registro de DANFE? A exclusão não reverte o saldo descontado na meta.');
       if (!confirmado) return;
       
-      state.draftDanfes.splice(index, 1);
-      renderDanfeList();
-    }
-
-    async function saveDanfeDraft() {
-      if (!isEditorOrAdmin()) return;
-      const id = document.getElementById('danfeModalEditId').value;
+      const { error } = await supabaseClient.from('danfes').delete().eq('id', idDanfe);
+      if (error) return appConfirm('Erro ao excluir: ' + error.message);
       
-      const { error } = await supabaseClient.from('empenhos').update({ danfes_registradas: state.draftDanfes }).eq('id', id);
-      
-      if (error) {
-        await appConfirm('Erro ao salvar o array de DANFEs: ' + error.message);
-        return;
-      }
-      
-      // Submissão Consolidada de Metas: Dispara apenas se o rascunho gerou produtividade
-      if (state.draftPontos > 0) {
-         const newStock = Math.max(0, state.danfeStock - state.draftPontos);
-         const payload = {
-            usuario_nome: state.session.nome,
-            pasta_local_saldo: newStock,
-            quantidade_publicada: state.draftPontos,
-            tipo_registro: 'TURNO'
-         };
-         
-         const { error: metaError } = await supabaseClient.from('metas_producao').insert([payload]);
-         if (!metaError) {
-            state.danfeStock = newStock;
-            state.danfeLogs.push({ data: new Date().toLocaleDateString('pt-BR'), usuario: state.session.nome, quantidade: state.draftPontos });
-            
-            // Atualiza os inputs estáticos da aba de Metas
-            const stockInput = document.getElementById('danfeStockInput');
-            if (stockInput) stockInput.value = state.danfeStock;
-         }
-      }
-      
-      closeDanfeModal();
       await fetchSheetData();
-      await appConfirm('Alterações e metas consolidadas com sucesso!');
+      renderDanfeList();
     }
 
     /* ==========================================================
@@ -1573,10 +1590,11 @@
         const { data, error } = await supabaseClient
           .from('metas_producao')
           .select('*')
-          .order('created_at', { ascending: true }); // Ordena do mais antigo para o mais novo
+          .order('created_at', { ascending: true });
 
         if (error) throw error;
 
+        // Limpa o log e recupera o estoque
         state.danfeLogs = [];
         let currentStock = 0;
 
@@ -1584,19 +1602,28 @@
           data.forEach(item => {
             if (item.quantidade_publicada > 0) {
               state.danfeLogs.push({
-                data: new Date(item.created_at).toLocaleDateString('pt-BR'),
+                data_crua: item.created_at,
+                data_f: new Date(item.created_at).toLocaleDateString('pt-BR'),
                 usuario: item.usuario_nome,
                 quantidade: item.quantidade_publicada
               });
             }
           });
-          // O estoque atual será o saldo da última movimentação registrada
           currentStock = data[data.length - 1].pasta_local_saldo || 0;
         }
 
         state.danfeStock = currentStock;
         const stockInput = document.getElementById('danfeStockInput');
         if (stockInput) stockInput.value = currentStock;
+
+        // Atualiza o select de usuários para o filtro da nova tabela
+        const uniqueUsers = [...new Set(state.danfesGlobal.map(d => d.responsavel))];
+        const userSelect = document.getElementById('filtroRespDanfe');
+        if (userSelect && userSelect.options.length === 1) {
+           uniqueUsers.forEach(u => {
+              if (u) userSelect.innerHTML += `<option value="${u}">${u}</option>`;
+           });
+        }
 
         renderDanfeMetrics();
       } catch (err) {
@@ -1617,163 +1644,113 @@
 
       const { error } = await supabaseClient.from('metas_producao').insert([payload]);
 
-      if (error) {
-        alert('Erro ao salvar estoque no banco: ' + error.message);
-        return;
-      }
+      if (error) return appConfirm('Erro ao salvar estoque no banco: ' + error.message);
 
       state.danfeStock = val;
-      renderDanfeMetrics();
-      alert('Estoque de DANFEs atualizado na nuvem!');
-    }
-
-    async function logDanfeProduction(e) {
-      e.preventDefault();
-      if (!isEditorOrAdmin()) return;
-      const qty = parseInt(document.getElementById('danfeQtyLog').value) || 0;
-      if (qty <= 0) return;
-
-      const btn = e.target.querySelector('button[type="submit"]') || e.target;
-      const originalHtml = btn.innerHTML;
-      btn.disabled = true;
-      btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Registrando...';
-
-      const newStock = Math.max(0, state.danfeStock - qty);
-      
-      const payload = {
-        usuario_nome: state.session.nome,
-        pasta_local_saldo: newStock,
-        quantidade_publicada: qty,
-        tipo_registro: 'TURNO'
-      };
-
-      const { error } = await supabaseClient.from('metas_producao').insert([payload]);
-      
-      btn.disabled = false;
-      btn.innerHTML = originalHtml;
-
-      if (error) {
-        alert('Erro ao registrar produção no banco: ' + error.message);
-        return;
-      }
-
-      // Atualiza o estado local para evitar nova requisição ao banco
-      const log = { data: new Date().toLocaleDateString('pt-BR'), usuario: state.session.nome, quantidade: qty };
-      state.danfeLogs.push(log);
-      state.danfeStock = newStock;
-      
-      document.getElementById('danfeStockInput').value = state.danfeStock;
-      document.getElementById('danfeQtyLog').value = '';
-      
-      renderDanfeMetrics();
-      alert('Produção registrada com sucesso!');
-    }
-
-    async function clearDanfeLogs() {
-      if (!isAdmin()) return;
-      if (!confirm("Tem certeza que deseja apagar todo o histórico de produção do banco para toda a equipe?")) return;
-      
-      try {
-        const { error } = await supabaseClient
-          .from('metas_producao')
-          .delete()
-          .neq('tipo_registro', 'INDEFINIDO'); // Truque de SQL para apagar todas as linhas
-          
-        if (error) throw error;
-
-        state.danfeLogs = [];
-        state.danfeStock = 0;
-        document.getElementById('danfeStockInput').value = state.danfeStock;
-        renderDanfeMetrics();
-        alert('Histórico reiniciado com sucesso!');
-      } catch (err) {
-        console.error('Erro ao limpar log:', err);
-        alert('Erro ao limpar o banco: ' + err.message);
-      }
+      appConfirm('Estoque de DANFEs reconfigurado manualmente!');
     }
 
     function renderDanfeMetrics() {
-      const container = document.getElementById('danfePerformanceMetrics');
-      if (!container) return;
-      
-      const nesPendentesPublicacao = state.nes.filter(n => n.situacao === 'Publicar').length;
-      let danfesPendentesDspace = 0;
-      let valorTotalPendente = 0;
-
-      state.nes.forEach(n => {
-        const danfes = n.danfes_registradas || [];
-        danfes.forEach(d => {
-          if (!d.publicada_dspace) {
-            danfesPendentesDspace++;
-            valorTotalPendente += (Number(d.valor) || 0);
-          }
-        });
-      });
-
-      const userTotals = {};
-      let grandTotal = 0;
-      state.danfeLogs.forEach(l => {
-        userTotals[l.usuario] = (userTotals[l.usuario] || 0) + l.quantidade;
-        grandTotal += l.quantidade;
-      });
-
-      const avgDaily = state.danfeLogs.length > 0 ? (grandTotal / state.danfeLogs.length).toFixed(1) : 0;
-      const daysToZeroFolder = avgDaily > 0 ? Math.ceil(state.danfeStock / avgDaily) : '∞';
-
-      let logTableHtml = `
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-top:20px; margin-bottom:10px;">
-          <h4 style="font-size:0.85rem; color:var(--text-muted); margin:0;">Histórico de Produção (Log Diário):</h4>
-          ${isAdmin() ? `<button class="btn btn-secondary" style="padding:4px 8px; font-size:0.7rem; color:#f87171; border-color: rgba(239,68,68,0.3);" onclick="clearDanfeLogs()"><i class="fa-solid fa-trash"></i> Limpar Log</button>` : ''}
-        </div>
-        <div class="table-container" style="max-height: 250px; overflow-y: auto; background: rgba(0,0,0,0.15); border-radius: 8px; border: 1px solid var(--border-color);">
-          <table style="width: 100%; border-collapse: collapse; font-size: 0.8rem;">
-            <thead>
-              <tr>
-                <th style="padding: 8px; text-align: left; border-bottom: 1px solid var(--border-color); position: sticky; top: 0; background: var(--bg-card);">Data</th>
-                <th style="padding: 8px; text-align: left; border-bottom: 1px solid var(--border-color); position: sticky; top: 0; background: var(--bg-card);">Usuário</th>
-                <th style="padding: 8px; text-align: center; border-bottom: 1px solid var(--border-color); position: sticky; top: 0; background: var(--bg-card);">DANFEs Publicadas</th>
-              </tr>
-            </thead>
-            <tbody>
-      `;
-      
-      const reversedLogs = [...state.danfeLogs].reverse();
-      if (reversedLogs.length === 0) {
-        logTableHtml += `<tr><td colspan="3" style="padding: 12px; text-align: center; color: var(--text-muted);">Nenhum registro encontrado.</td></tr>`;
-      } else {
-        reversedLogs.forEach(l => {
-          logTableHtml += `
-            <tr>
-              <td style="padding: 8px; border-bottom: 1px solid rgba(255,255,255,0.05);">${l.data}</td>
-              <td style="padding: 8px; border-bottom: 1px solid rgba(255,255,255,0.05);">${l.usuario}</td>
-              <td style="padding: 8px; text-align: center; border-bottom: 1px solid rgba(255,255,255,0.05); font-weight: 600;">${l.quantidade}</td>
-            </tr>
-          `;
-        });
+      // 1. Renderiza o Card de Desempenho (Agrupamento por Semana e Usuário)
+      const containerPerf = document.getElementById('danfePerformanceMetrics');
+      if (containerPerf) {
+         // Calcula a semana atual para comparar a meta (domingo a sábado)
+         const hoje = new Date();
+         const primDiaDaSemana = new Date(hoje.setDate(hoje.getDate() - hoje.getDay()));
+         primDiaDaSemana.setHours(0,0,0,0);
+         
+         const agrupadoSemana = {};
+         state.danfeLogs.forEach(l => {
+            const lDate = new Date(l.data_crua);
+            if (lDate >= primDiaDaSemana) {
+               agrupadoSemana[l.usuario] = (agrupadoSemana[l.usuario] || 0) + l.quantidade;
+            }
+         });
+         
+         let perfHtml = '<div style="display:flex; flex-direction:column; gap:8px; margin-top: 10px;">';
+         if (Object.keys(agrupadoSemana).length === 0) {
+            perfHtml += '<div style="font-size:0.8rem; color:var(--text-muted);">Nenhum registro na semana vigente.</div>';
+         } else {
+            for (const [user, qty] of Object.entries(agrupadoSemana)) {
+               const progress = Math.min(100, (qty / state.metaSemanal) * 100);
+               const corBarra = progress >= 100 ? '#10b981' : 'var(--accent)';
+               perfHtml += `
+                 <div>
+                   <div style="display:flex; justify-content:space-between; font-size:0.8rem; margin-bottom:4px;">
+                     <span><strong>${user}</strong></span>
+                     <span>${qty} / ${state.metaSemanal}</span>
+                   </div>
+                   <div style="width:100%; height:6px; background:rgba(255,255,255,0.1); border-radius:3px; overflow:hidden;">
+                     <div style="width:${progress}%; height:100%; background:${corBarra};"></div>
+                   </div>
+                 </div>
+               `;
+            }
+         }
+         perfHtml += '</div>';
+         containerPerf.innerHTML = perfHtml;
       }
-      logTableHtml += `</tbody></table></div>`;
-
-      container.innerHTML = `
-        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 15px; margin-bottom: 20px;">
-          <div style="padding: 12px; border-radius: 8px; background: rgba(0,0,0,0.15);">
-            <div style="font-size:0.75rem; color:var(--text-muted);">NEs Pendentes de Publicação</div>
-            <div style="font-size: 1.4rem; font-weight:700; color:var(--badge-publicar-text);">${nesPendentesPublicacao} NEs</div>
-          </div>
-          <div style="padding: 12px; border-radius: 8px; background: rgba(0,0,0,0.15);">
-            <div style="font-size:0.75rem; color:var(--text-muted);">DANFEs Pendentes (DSpace)</div>
-            <div style="font-size: 1.4rem; font-weight:700; color:#f87171;">${danfesPendentesDspace} DANFEs</div>
-          </div>
-          <div style="padding: 12px; border-radius: 8px; background: rgba(0,0,0,0.15);">
-            <div style="font-size:0.75rem; color:var(--text-muted);">Passivo Financeiro sem DSpace</div>
-            <div style="font-size: 1.4rem; font-weight:700; color:var(--accent);">R$ ${valorTotalPendente.toLocaleString('pt-BR', {minimumFractionDigits: 2})}</div>
-          </div>
-          <div style="padding: 12px; border-radius: 8px; background: rgba(0,0,0,0.15);">
-            <div style="font-size:0.75rem; color:var(--text-muted);">Previsão Quitação (Pasta Local)</div>
-            <div style="font-size: 1.4rem; font-weight:700;">${daysToZeroFolder} dias</div>
-          </div>
-        </div>
-        ${logTableHtml}
-      `;
+      
+      // 2. Renderiza a Tabela Global do Fluxo de DANFEs com Filtros
+      const tbody = document.getElementById('globalDanfeTableBody');
+      if (!tbody) return;
+      
+      const valFiltroData = document.getElementById('filtroDataDanfe') ? document.getElementById('filtroDataDanfe').value : '';
+      const valFiltroResp = document.getElementById('filtroRespDanfe') ? document.getElementById('filtroRespDanfe').value : '';
+      
+      let danfesFiltradas = [...state.danfesGlobal];
+      
+      if (valFiltroData) {
+         const dFormatada = valFiltroData.split('-').reverse().join('/'); // AAAA-MM-DD para DD/MM/AAAA
+         danfesFiltradas = danfesFiltradas.filter(d => {
+             const rd = new Date(d.registro_data).toLocaleDateString('pt-BR');
+             return rd === dFormatada;
+         });
+      }
+      if (valFiltroResp) {
+         danfesFiltradas = danfesFiltradas.filter(d => d.responsavel === valFiltroResp);
+      }
+      
+      tbody.innerHTML = '';
+      if (danfesFiltradas.length === 0) {
+         tbody.innerHTML = '<tr><td colspan="10" style="text-align:center; padding:15px; color:var(--text-muted);">Nenhuma DANFE encontrada para o filtro atual.</td></tr>';
+         return;
+      }
+      
+      danfesFiltradas.forEach(d => {
+         // Faz o cross-reference com o objeto NE em memória para buscar valores
+         const parentNE = state.nes.find(n => n.id === d.empenho_id);
+         const numNE = parentNE ? parentNE.ne : 'Excluída';
+         const valNE = parentNE ? parentNE.valor : 0;
+         const saldoNE = parentNE ? parentNE.saldo : 0;
+         
+         // Para "Soma Vias (Liq.)", calculamos o total de liquidações daquela NE
+         let somaLiqNE = 0;
+         if (parentNE && parentNE.danfes_relacionais) {
+            somaLiqNE = parentNE.danfes_relacionais
+              .filter(dr => dr.via === 'Liquidação')
+              .reduce((acc, curr) => acc + Number(curr.valor), 0);
+         }
+         
+         const dataReg = new Date(d.registro_data).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' });
+         
+         tbody.innerHTML += `
+           <tr>
+             <td style="font-weight:600;">${numNE}</td>
+             <td>${d.numero}</td>
+             <td><span class="badge ${d.via === 'Liquidação' ? 'badge-publicar' : 'badge-publicado'}">${d.via}</span></td>
+             <td>R$ ${Number(d.valor).toLocaleString('pt-BR', {minimumFractionDigits: 2})}</td>
+             <td style="color:var(--text-muted);">R$ ${somaLiqNE.toLocaleString('pt-BR', {minimumFractionDigits: 2})}</td>
+             <td>R$ ${valNE.toLocaleString('pt-BR', {minimumFractionDigits: 2})}</td>
+             <td style="color: ${saldoNE < 0 ? '#f87171' : (saldoNE === 0 ? '#10b981' : 'inherit')}; font-weight:600;">R$ ${saldoNE.toLocaleString('pt-BR', {minimumFractionDigits: 2})}</td>
+             <td style="color:var(--text-muted);">${dataReg}</td>
+             <td>${d.responsavel || '-'}</td>
+             <td style="text-align:center;">
+               ${parentNE ? `<button class="btn btn-secondary" style="padding:4px 8px; font-size:0.7rem;" onclick="openEditModal('${d.empenho_id}')"><i class="fa-solid fa-up-right-from-square"></i></button>` : ''}
+             </td>
+           </tr>
+         `;
+      });
     }
 
     async function submitFeedback(e) {
