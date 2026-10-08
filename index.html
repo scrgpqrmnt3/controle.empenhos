@@ -514,19 +514,22 @@
           </div>
         </div>
         
+        <div style="margin-bottom: 15px;">
+           <input type="text" id="filtroTextoDanfe" placeholder="Pesquisar por NE, DANFE, SPED, Valor, Via, Responsável..." class="col-filter-input" oninput="renderDanfeMetrics()" style="max-width: 100%;">
+        </div>
         <div class="table-container" style="max-height: 400px;">
           <table style="width: 100%; border-collapse: collapse; font-size: 0.8rem;">
             <thead>
               <tr>
-                <th>Nº NE</th>
-                <th>Nº DANFE</th>
-                <th>Via</th>
-                <th>Valor DANFE</th>
-                <th>Soma Vias (Liq.)</th>
+                <th class="sortable" onclick="sortGlobalDanfe('numNE')">Nº NE <span id="sort-d-numNE"></span></th>
+                <th class="sortable" onclick="sortGlobalDanfe('numero')">Nº DANFE <span id="sort-d-numero"></span></th>
+                <th class="sortable" onclick="sortGlobalDanfe('via')">Via <span id="sort-d-via"></span></th>
+                <th class="sortable" onclick="sortGlobalDanfe('valor')">Valor DANFE <span id="sort-d-valor"></span></th>
+                <th class="sortable" onclick="sortGlobalDanfe('somaPag')">Soma Vias (Pag.) <span id="sort-d-somaPag"></span></th>
                 <th>Valor NE</th>
                 <th>Saldo NE</th>
-                <th>Registro</th>
-                <th>Responsável</th>
+                <th class="sortable" onclick="sortGlobalDanfe('registro_data')">Registro <span id="sort-d-registro_data"></span></th>
+                <th class="sortable" onclick="sortGlobalDanfe('responsavel')">Responsável <span id="sort-d-responsavel"></span></th>
                 <th style="text-align:center;">Ação</th>
               </tr>
             </thead>
@@ -655,7 +658,18 @@
       </div>
 
       <div style="border-top: 1px solid var(--border-color); padding-top: 15px;">
-        <label style="font-size: 0.85rem; font-weight: 600; margin-bottom: 10px; display: block;">DANFEs Vinculadas a este Empenho</label>
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+          <label style="font-size: 0.85rem; font-weight: 600;">DANFEs Vinculadas a este Empenho</label>
+          <div style="display: flex; gap: 8px;">
+            <button class="btn btn-secondary" id="btnLixeiraDanfe" onclick="toggleViewLixeiraDanfe()" style="font-size: 0.75rem; padding: 4px 8px;"><i class="fa-solid fa-trash-can-arrow-up"></i> Lixeira</button>
+          </div>
+        </div>
+        
+        <div id="danfeBulkActions" style="display:none; justify-content:space-between; align-items:center; background: rgba(0,0,0,0.2); padding: 8px 12px; border-radius: 6px; margin-bottom: 10px; border: 1px solid var(--border-color);">
+          <label style="font-size: 0.75rem;"><input type="checkbox" id="selectAllDanfe" onchange="toggleSelectAllDanfes(this.checked)"> Sel. Todos</label>
+          <button id="btnBulkDanfeAction" class="btn btn-secondary" style="font-size: 0.7rem; padding: 4px 8px; color: #f87171;" onclick="processBulkDanfeAction()"><i class="fa-solid fa-trash"></i> Excluir Selecionados</button>
+        </div>
+
         <div id="danfeListContainer" style="max-height: 250px; overflow-y: auto;"></div>
       </div>
 
@@ -703,7 +717,7 @@
       theme: localStorage.getItem('ne_theme') || 'dark',
       session: JSON.parse(localStorage.getItem('ne_session')) || null,
       danfeStock: parseInt(localStorage.getItem('ne_danfe_stock')) || 0,
-      danfeLogs: [], // Log de Produção Matemática (alimentado pelo banco)
+      danfeLogs: [], 
       columnFilters: {},
       selectedIds: new Set(),
       currentPage: 1,
@@ -714,9 +728,15 @@
       showBulkPanel: false,
       showLixeira: false,
       nes: [],
-      danfesGlobal: [], // Central unificada de DANFEs
-      draftDanfes: [], // Lista local temporária do modal por empenho
-      metaSemanal: 50
+      danfesGlobal: [],
+      draftDanfes: [],
+      metaSemanal: 50,
+      
+      // Novos Controles da Tabela de DANFEs
+      showLixeiraDanfes: false,
+      sortDanfeKey: 'registro_data',
+      sortDanfeAsc: false,
+      selectedDanfeIds: new Set()
     };
 
     const DICTIONARIES = {
@@ -844,12 +864,12 @@
         state.danfesGlobal = danfesRes.data;
 
         state.nes = empenhosRes.data.map(row => {
-          // Filtra as DANFEs desta NE
-          const danfesDaNe = state.danfesGlobal.filter(d => d.empenho_id === row.id);
+          // Filtra apenas DANFEs ativas (fora da lixeira) desta NE
+          const danfesDaNe = state.danfesGlobal.filter(d => d.empenho_id === row.id && d.ativo !== false);
           
-          // Regra de Negócio: O cálculo de saldo/amortização considera APENAS as vias de Liquidação
-          const somaLiquidacao = danfesDaNe
-            .filter(d => d.via === 'Liquidação')
+          // Regra de Negócio: O cálculo de saldo/amortização considera APENAS as vias de Pagamento ativas
+          const somaPagamento = danfesDaNe
+            .filter(d => d.via === 'Pagamento')
             .reduce((acc, curr) => acc + (Number(curr.valor) || 0), 0);
             
           const valTotal = Number(row.valor_total) || 0;
@@ -870,7 +890,7 @@
             situacao: row.situacao,
             fase: row.fase,
             valor: valTotal,
-            saldo: valTotal - somaLiquidacao, // Novo cálculo de saldo
+            saldo: valTotal - somaPagamento, // Deduz vias de pagamento
             publi: formatDate(row.publi),
             responsavel: row.responsavel || '',
             atu: formatDate(row.atu),
@@ -1459,16 +1479,52 @@
     /* ==========================================================
      * GESTÃO DE DANFEs EM NE (DRAFT STATE / CARRINHO DE COMPRAS)
      * ========================================================== */
+    function toggleViewLixeiraDanfe() {
+      state.showLixeiraDanfes = !state.showLixeiraDanfes;
+      const btn = document.getElementById('btnLixeiraDanfe');
+      if (state.showLixeiraDanfes) {
+        btn.classList.replace('btn-secondary', 'btn-accent');
+        btn.innerHTML = '<i class="fa-solid fa-trash-arrow-up"></i> Sair Lixeira';
+      } else {
+        btn.classList.replace('btn-accent', 'btn-secondary');
+        btn.innerHTML = '<i class="fa-solid fa-trash-can-arrow-up"></i> Lixeira';
+      }
+      state.selectedDanfeIds.clear();
+      renderDanfeList();
+    }
+
+    function toggleSelectAllDanfes(isChecked) {
+      const id = document.getElementById('danfeModalEditId').value;
+      const listaDanfes = state.danfesGlobal.filter(d => d.empenho_id === id && (state.showLixeiraDanfes ? d.ativo === false : d.ativo !== false));
+      
+      if (isChecked) {
+        listaDanfes.forEach(d => state.selectedDanfeIds.add(d.id));
+      } else {
+        state.selectedDanfeIds.clear();
+      }
+      renderDanfeList();
+    }
+
+    function toggleSelectDanfe(id, isChecked) {
+      if (isChecked) state.selectedDanfeIds.add(id);
+      else state.selectedDanfeIds.delete(id);
+      renderDanfeList();
+    }
+
     function openDanfeModal(id) {
       const item = state.nes.find(n => n.id === id);
       if (!item) return;
       document.getElementById('danfeModalEditId').value = item.id;
       document.getElementById('danfeModalNE').textContent = item.ne;
       
-      // Reseta os inputs
       document.getElementById('novaDanfeNumero').value = '';
       document.getElementById('novaDanfeValor').value = '';
       document.getElementById('novaDanfeVia').value = 'Liquidação';
+      
+      state.showLixeiraDanfes = false;
+      state.selectedDanfeIds.clear();
+      document.getElementById('btnLixeiraDanfe').classList.replace('btn-accent', 'btn-secondary');
+      document.getElementById('btnLixeiraDanfe').innerHTML = '<i class="fa-solid fa-trash-can-arrow-up"></i> Lixeira';
       
       document.getElementById('danfeModal').style.display = 'flex';
       renderDanfeList();
@@ -1476,6 +1532,7 @@
 
     function closeDanfeModal() {
       document.getElementById('danfeModal').style.display = 'none';
+      state.selectedDanfeIds.clear();
     }
 
     function renderDanfeList() {
@@ -1484,36 +1541,62 @@
       const item = state.nes.find(n => n.id === id);
       const totalNe = Number(item.valor) || 0;
       
-      // Extrai a lista do estado global que pertence a essa NE
-      const listaDanfes = state.danfesGlobal.filter(d => d.empenho_id === id);
+      // Filtra de acordo com a lixeira
+      const listaDanfes = state.danfesGlobal.filter(d => d.empenho_id === id && (state.showLixeiraDanfes ? d.ativo === false : d.ativo !== false));
       
-      let somaLiquidacao = 0;
+      // Saldo da NE deduz estritamente Pagamento ativo
+      let somaPagamento = 0;
+      state.danfesGlobal.filter(d => d.empenho_id === id && d.ativo !== false).forEach(d => {
+         if (d.via === 'Pagamento') somaPagamento += Number(d.valor);
+      });
+      
+      const bulkPanel = document.getElementById('danfeBulkActions');
+      const btnBulkAction = document.getElementById('btnBulkDanfeAction');
+      if (isEditorOrAdmin() && listaDanfes.length > 0) {
+         bulkPanel.style.display = 'flex';
+         document.getElementById('selectAllDanfe').checked = state.selectedDanfeIds.size === listaDanfes.length;
+         if (state.showLixeiraDanfes) {
+            btnBulkAction.innerHTML = '<i class="fa-solid fa-arrow-rotate-left"></i> Restaurar Selecionados';
+            btnBulkAction.style.color = '#10b981';
+         } else {
+            btnBulkAction.innerHTML = '<i class="fa-solid fa-trash"></i> Excluir Selecionados';
+            btnBulkAction.style.color = '#f87171';
+         }
+      } else {
+         bulkPanel.style.display = 'none';
+      }
+      
       container.innerHTML = '';
       
       if (listaDanfes.length === 0) {
-        container.innerHTML = '<div style="font-size:0.8rem; color:var(--text-muted); text-align:center; padding: 10px;">Nenhuma DANFE vinculada a esta Nota de Empenho.</div>';
+        container.innerHTML = `<div style="font-size:0.8rem; color:var(--text-muted); text-align:center; padding: 10px;">${state.showLixeiraDanfes ? 'Lixeira vazia.' : 'Nenhuma DANFE vinculada a esta Nota de Empenho.'}</div>`;
       } else {
         listaDanfes.forEach((d) => {
-          if (d.via === 'Liquidação') somaLiquidacao += Number(d.valor);
-          
           const corBadge = d.via === 'Liquidação' ? 'badge-publicar' : 'badge-publicado';
+          const isChecked = state.selectedDanfeIds.has(d.id) ? 'checked' : '';
+          const acaoBtn = state.showLixeiraDanfes 
+            ? `<button type="button" class="btn btn-secondary" onclick="processSingleDanfeAction('${d.id}')" style="padding:4px 8px; font-size:0.7rem; color:#10b981;" title="Restaurar"><i class="fa-solid fa-arrow-rotate-left"></i></button>`
+            : `<button type="button" class="btn btn-secondary" onclick="processSingleDanfeAction('${d.id}')" style="padding:4px 8px; font-size:0.7rem; color:#f87171;" title="Excluir"><i class="fa-solid fa-trash"></i></button>`;
           
           container.innerHTML += `
             <div style="display:flex; justify-content:space-between; align-items:center; padding: 8px 12px; background: rgba(255,255,255,0.03); border: 1px solid var(--border-color); border-radius: 6px; margin-bottom: 8px;">
-              <div>
-                <strong style="font-size: 0.85rem;">Nº ${d.numero}</strong> <span class="badge ${corBadge}" style="margin-left: 5px;">${d.via}</span><br>
-                <span style="font-size: 0.75rem; color: var(--text-muted);">R$ ${Number(d.valor).toLocaleString('pt-BR', {minimumFractionDigits: 2})}</span>
+              <div style="display:flex; align-items:center; gap: 10px;">
+                ${isEditorOrAdmin() ? `<input type="checkbox" ${isChecked} onchange="toggleSelectDanfe('${d.id}', this.checked)">` : ''}
+                <div>
+                  <strong style="font-size: 0.85rem;">Nº ${d.numero}</strong> <span class="badge ${corBadge}" style="margin-left: 5px;">${d.via}</span><br>
+                  <span style="font-size: 0.75rem; color: var(--text-muted);">R$ ${Number(d.valor).toLocaleString('pt-BR', {minimumFractionDigits: 2})}</span>
+                </div>
               </div>
               <div style="display:flex; gap:12px; align-items:center; font-size: 0.75rem; color: var(--text-muted);">
                 <i class="fa-solid fa-user"></i> ${d.responsavel || 'Desconhecido'}
-                <button type="button" class="btn btn-secondary" onclick="deleteDanfe('${d.id}')" style="padding:4px 8px; font-size:0.7rem; color:#f87171;" title="Excluir"><i class="fa-solid fa-trash"></i></button>
+                ${isEditorOrAdmin() ? acaoBtn : ''}
               </div>
             </div>
           `;
         });
       }
       
-      const saldo = totalNe - somaLiquidacao;
+      const saldo = totalNe - somaPagamento;
       document.getElementById('danfeModalValorTotal').textContent = `R$ ${totalNe.toLocaleString('pt-BR', {minimumFractionDigits: 2})}`;
       document.getElementById('danfeModalSaldo').textContent = `R$ ${saldo.toLocaleString('pt-BR', {minimumFractionDigits: 2})}`;
       document.getElementById('danfeModalSaldo').style.color = saldo < 0 ? '#f87171' : (saldo === 0 ? '#10b981' : 'var(--accent)');
@@ -1570,15 +1653,46 @@
       renderDanfeList(); // Re-renderiza o modal atualizado
     }
 
-    async function deleteDanfe(idDanfe) {
-      if (!isEditorOrAdmin()) return;
-      const confirmado = await appConfirm('Tem certeza que deseja excluir este registro de DANFE? A exclusão não reverte o saldo descontado na meta.');
+    async function processSingleDanfeAction(idDanfe) {
+       state.selectedDanfeIds.clear();
+       state.selectedDanfeIds.add(idDanfe);
+       await processBulkDanfeAction();
+    }
+
+    async function processBulkDanfeAction() {
+      if (!isEditorOrAdmin() || state.selectedDanfeIds.size === 0) return;
+      
+      const count = state.selectedDanfeIds.size;
+      const acaoTxt = state.showLixeiraDanfes ? 'restaurar' : 'excluir';
+      const novoAtivoStatus = state.showLixeiraDanfes ? true : false;
+      const estornoPontos = state.showLixeiraDanfes ? count : -count; // Restaura consome (+), Lixeira devolve (-)
+      
+      const confirmado = await appConfirm(`Deseja ${acaoTxt} ${count} DANFE(s)? A meta semanal e o saldo da pasta local serão recalculados automaticamente.`);
       if (!confirmado) return;
       
-      const { error } = await supabaseClient.from('danfes').delete().eq('id', idDanfe);
-      if (error) return appConfirm('Erro ao excluir: ' + error.message);
+      // 1. Atualiza flag na tabela de danfes (Mover Lixeira / Restaurar)
+      const idsArray = Array.from(state.selectedDanfeIds);
+      const { error: errDanfe } = await supabaseClient.from('danfes')
+         .update({ ativo: novoAtivoStatus })
+         .in('id', idsArray);
+         
+      if (errDanfe) return appConfirm('Erro ao processar: ' + errDanfe.message);
       
-      await fetchSheetData();
+      // 2. Cria o registro contábil de estorno/reconsumo na meta e ajusta o saldo da pasta
+      const novoEstoque = Math.max(0, state.danfeStock - estornoPontos);
+      const payloadMeta = {
+        usuario_nome: state.session.nome,
+        pasta_local_saldo: novoEstoque,
+        quantidade_publicada: estornoPontos,
+        tipo_registro: state.showLixeiraDanfes ? 'RESTAURACAO' : 'ESTORNO'
+      };
+      
+      const { error: errMeta } = await supabaseClient.from('metas_producao').insert([payloadMeta]);
+      if (errMeta) return appConfirm('Erro ao ajustar metas: ' + errMeta.message);
+      
+      state.selectedDanfeIds.clear();
+      // 3. Atualiza em tempo real, sem recarregar a página
+      await fetchSheetData(); 
       renderDanfeList();
     }
 
@@ -1691,24 +1805,114 @@
          containerPerf.innerHTML = perfHtml;
       }
       
-      // 2. Renderiza a Tabela Global do Fluxo de DANFEs com Filtros
+      function sortGlobalDanfe(key) {
+       if (state.sortDanfeKey === key) {
+          state.sortDanfeAsc = !state.sortDanfeAsc;
+       } else {
+          state.sortDanfeKey = key;
+          state.sortDanfeAsc = true;
+       }
+       document.querySelectorAll('#tab-metas th.sortable span').forEach(el => el.textContent = '');
+       const thSpan = document.getElementById(`sort-d-${key}`);
+       if (thSpan) thSpan.textContent = state.sortDanfeAsc ? ' ▲' : ' ▼';
+       renderDanfeMetrics();
+    }
+
+    function renderDanfeMetrics() {
+      // 1. Renderiza o Card de Desempenho (Agrupamento por Semana e Usuário)
+      const containerPerf = document.getElementById('danfePerformanceMetrics');
+      if (containerPerf) {
+         const hoje = new Date();
+         const primDiaDaSemana = new Date(hoje.setDate(hoje.getDate() - hoje.getDay()));
+         primDiaDaSemana.setHours(0,0,0,0);
+         
+         const agrupadoSemana = {};
+         state.danfeLogs.forEach(l => {
+            const lDate = new Date(l.data_crua);
+            if (lDate >= primDiaDaSemana) {
+               agrupadoSemana[l.usuario] = (agrupadoSemana[l.usuario] || 0) + l.quantidade;
+            }
+         });
+         
+         let perfHtml = '<div style="display:flex; flex-direction:column; gap:8px; margin-top: 10px;">';
+         if (Object.keys(agrupadoSemana).length === 0) {
+            perfHtml += '<div style="font-size:0.8rem; color:var(--text-muted);">Nenhum registro na semana vigente.</div>';
+         } else {
+            for (const [user, qty] of Object.entries(agrupadoSemana)) {
+               const progress = Math.max(0, Math.min(100, (qty / state.metaSemanal) * 100));
+               const isNegative = qty < 0;
+               const corBarra = isNegative ? '#f87171' : (progress >= 100 ? '#10b981' : 'var(--accent)');
+               perfHtml += `
+                 <div>
+                   <div style="display:flex; justify-content:space-between; font-size:0.8rem; margin-bottom:4px;">
+                     <span><strong>${user}</strong></span>
+                     <span style="color:${isNegative ? '#f87171' : 'inherit'}">${qty} / ${state.metaSemanal}</span>
+                   </div>
+                   <div style="width:100%; height:6px; background:rgba(255,255,255,0.1); border-radius:3px; overflow:hidden;">
+                     <div style="width:${isNegative ? 0 : progress}%; height:100%; background:${corBarra};"></div>
+                   </div>
+                 </div>
+               `;
+            }
+         }
+         perfHtml += '</div>';
+         containerPerf.innerHTML = perfHtml;
+      }
+      
+      // 2. Renderiza a Tabela Global do Fluxo de DANFEs
       const tbody = document.getElementById('globalDanfeTableBody');
       if (!tbody) return;
       
       const valFiltroData = document.getElementById('filtroDataDanfe') ? document.getElementById('filtroDataDanfe').value : '';
       const valFiltroResp = document.getElementById('filtroRespDanfe') ? document.getElementById('filtroRespDanfe').value : '';
+      const txtBusca = document.getElementById('filtroTextoDanfe') ? document.getElementById('filtroTextoDanfe').value.toLowerCase() : '';
       
-      let danfesFiltradas = [...state.danfesGlobal];
+      // Filtra apenas registros ativos da Lixeira
+      let danfesFiltradas = state.danfesGlobal.filter(d => d.ativo !== false).map(d => {
+         const parentNE = state.nes.find(n => n.id === d.empenho_id);
+         let somaPagNE = 0;
+         if (parentNE && parentNE.danfes_relacionais) {
+            somaPagNE = parentNE.danfes_relacionais.filter(dr => dr.via === 'Pagamento' && dr.ativo !== false).reduce((acc, curr) => acc + Number(curr.valor), 0);
+         }
+         
+         return {
+            ...d,
+            numNE: parentNE ? parentNE.ne : 'Excluída',
+            sped: parentNE ? (parentNE.sped || '') : '',
+            valNE: parentNE ? parentNE.valor : 0,
+            saldoNE: parentNE ? parentNE.saldo : 0,
+            somaPag: somaPagNE
+         };
+      });
       
       if (valFiltroData) {
-         const dFormatada = valFiltroData.split('-').reverse().join('/'); // AAAA-MM-DD para DD/MM/AAAA
-         danfesFiltradas = danfesFiltradas.filter(d => {
-             const rd = new Date(d.registro_data).toLocaleDateString('pt-BR');
-             return rd === dFormatada;
-         });
+         const dFormatada = valFiltroData.split('-').reverse().join('/');
+         danfesFiltradas = danfesFiltradas.filter(d => new Date(d.registro_data).toLocaleDateString('pt-BR') === dFormatada);
       }
       if (valFiltroResp) {
          danfesFiltradas = danfesFiltradas.filter(d => d.responsavel === valFiltroResp);
+      }
+      if (txtBusca) {
+         danfesFiltradas = danfesFiltradas.filter(d => 
+            d.numNE.toLowerCase().includes(txtBusca) || 
+            String(d.sped).includes(txtBusca) ||
+            d.numero.toLowerCase().includes(txtBusca) || 
+            d.responsavel.toLowerCase().includes(txtBusca) ||
+            d.via.toLowerCase().includes(txtBusca) ||
+            String(d.valor).includes(txtBusca)
+         );
+      }
+      
+      if (state.sortDanfeKey) {
+        danfesFiltradas.sort((a, b) => {
+          let valA = a[state.sortDanfeKey];
+          let valB = b[state.sortDanfeKey];
+          if (typeof valA === 'string') valA = valA.toLowerCase();
+          if (typeof valB === 'string') valB = valB.toLowerCase();
+          if (valA < valB) return state.sortDanfeAsc ? -1 : 1;
+          if (valA > valB) return state.sortDanfeAsc ? 1 : -1;
+          return 0;
+        });
       }
       
       tbody.innerHTML = '';
@@ -1718,35 +1922,21 @@
       }
       
       danfesFiltradas.forEach(d => {
-         // Faz o cross-reference com o objeto NE em memória para buscar valores
-         const parentNE = state.nes.find(n => n.id === d.empenho_id);
-         const numNE = parentNE ? parentNE.ne : 'Excluída';
-         const valNE = parentNE ? parentNE.valor : 0;
-         const saldoNE = parentNE ? parentNE.saldo : 0;
-         
-         // Para "Soma Vias (Liq.)", calculamos o total de liquidações daquela NE
-         let somaLiqNE = 0;
-         if (parentNE && parentNE.danfes_relacionais) {
-            somaLiqNE = parentNE.danfes_relacionais
-              .filter(dr => dr.via === 'Liquidação')
-              .reduce((acc, curr) => acc + Number(curr.valor), 0);
-         }
-         
          const dataReg = new Date(d.registro_data).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' });
          
          tbody.innerHTML += `
            <tr>
-             <td style="font-weight:600;">${numNE}</td>
+             <td style="font-weight:600;">${d.numNE}</td>
              <td>${d.numero}</td>
              <td><span class="badge ${d.via === 'Liquidação' ? 'badge-publicar' : 'badge-publicado'}">${d.via}</span></td>
              <td>R$ ${Number(d.valor).toLocaleString('pt-BR', {minimumFractionDigits: 2})}</td>
-             <td style="color:var(--text-muted);">R$ ${somaLiqNE.toLocaleString('pt-BR', {minimumFractionDigits: 2})}</td>
-             <td>R$ ${valNE.toLocaleString('pt-BR', {minimumFractionDigits: 2})}</td>
-             <td style="color: ${saldoNE < 0 ? '#f87171' : (saldoNE === 0 ? '#10b981' : 'inherit')}; font-weight:600;">R$ ${saldoNE.toLocaleString('pt-BR', {minimumFractionDigits: 2})}</td>
+             <td style="color:var(--text-muted);">R$ ${d.somaPag.toLocaleString('pt-BR', {minimumFractionDigits: 2})}</td>
+             <td>R$ ${d.valNE.toLocaleString('pt-BR', {minimumFractionDigits: 2})}</td>
+             <td style="color: ${d.saldoNE < 0 ? '#f87171' : (d.saldoNE === 0 ? '#10b981' : 'inherit')}; font-weight:600;">R$ ${d.saldoNE.toLocaleString('pt-BR', {minimumFractionDigits: 2})}</td>
              <td style="color:var(--text-muted);">${dataReg}</td>
              <td>${d.responsavel || '-'}</td>
              <td style="text-align:center;">
-               ${parentNE ? `<button class="btn btn-secondary" style="padding:4px 8px; font-size:0.7rem;" onclick="openEditModal('${d.empenho_id}')"><i class="fa-solid fa-up-right-from-square"></i></button>` : ''}
+               <button class="btn btn-secondary" style="padding:4px 8px; font-size:0.7rem; color:#3b82f6;" onclick="openDanfeModal('${d.empenho_id}')" title="Gerenciar DANFEs"><i class="fa-solid fa-file-invoice-dollar"></i></button>
              </td>
            </tr>
          `;
