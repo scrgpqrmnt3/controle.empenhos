@@ -878,6 +878,7 @@
             id: row.id,
             ano: row.ano,
             ne: row.ne,
+            sped: row.sped || null,
             ug: row.ug,
             requisitante: row.requisitante || '',
             requisicao: row.requisicao || '',
@@ -1763,48 +1764,7 @@
       state.danfeStock = val;
       appConfirm('Estoque de DANFEs reconfigurado manualmente!');
     }
-
-    function renderDanfeMetrics() {
-      // 1. Renderiza o Card de Desempenho (Agrupamento por Semana e Usuário)
-      const containerPerf = document.getElementById('danfePerformanceMetrics');
-      if (containerPerf) {
-         // Calcula a semana atual para comparar a meta (domingo a sábado)
-         const hoje = new Date();
-         const primDiaDaSemana = new Date(hoje.setDate(hoje.getDate() - hoje.getDay()));
-         primDiaDaSemana.setHours(0,0,0,0);
-         
-         const agrupadoSemana = {};
-         state.danfeLogs.forEach(l => {
-            const lDate = new Date(l.data_crua);
-            if (lDate >= primDiaDaSemana) {
-               agrupadoSemana[l.usuario] = (agrupadoSemana[l.usuario] || 0) + l.quantidade;
-            }
-         });
-         
-         let perfHtml = '<div style="display:flex; flex-direction:column; gap:8px; margin-top: 10px;">';
-         if (Object.keys(agrupadoSemana).length === 0) {
-            perfHtml += '<div style="font-size:0.8rem; color:var(--text-muted);">Nenhum registro na semana vigente.</div>';
-         } else {
-            for (const [user, qty] of Object.entries(agrupadoSemana)) {
-               const progress = Math.min(100, (qty / state.metaSemanal) * 100);
-               const corBarra = progress >= 100 ? '#10b981' : 'var(--accent)';
-               perfHtml += `
-                 <div>
-                   <div style="display:flex; justify-content:space-between; font-size:0.8rem; margin-bottom:4px;">
-                     <span><strong>${user}</strong></span>
-                     <span>${qty} / ${state.metaSemanal}</span>
-                   </div>
-                   <div style="width:100%; height:6px; background:rgba(255,255,255,0.1); border-radius:3px; overflow:hidden;">
-                     <div style="width:${progress}%; height:100%; background:${corBarra};"></div>
-                   </div>
-                 </div>
-               `;
-            }
-         }
-         perfHtml += '</div>';
-         containerPerf.innerHTML = perfHtml;
-      }
-      
+    
       function sortGlobalDanfe(key) {
        if (state.sortDanfeKey === key) {
           state.sortDanfeAsc = !state.sortDanfeAsc;
@@ -1894,12 +1854,12 @@
       }
       if (txtBusca) {
          danfesFiltradas = danfesFiltradas.filter(d => 
-            d.numNE.toLowerCase().includes(txtBusca) || 
-            String(d.sped).includes(txtBusca) ||
-            d.numero.toLowerCase().includes(txtBusca) || 
-            d.responsavel.toLowerCase().includes(txtBusca) ||
-            d.via.toLowerCase().includes(txtBusca) ||
-            String(d.valor).includes(txtBusca)
+            (d.numNE || '').toLowerCase().includes(txtBusca) || 
+            String(d.sped || '').includes(txtBusca) ||
+            (d.numero || '').toLowerCase().includes(txtBusca) || 
+            (d.responsavel || '').toLowerCase().includes(txtBusca) ||
+            (d.via || '').toLowerCase().includes(txtBusca) ||
+            String(d.valor || '').includes(txtBusca)
          );
       }
       
