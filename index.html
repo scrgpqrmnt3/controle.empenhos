@@ -2115,7 +2115,14 @@
       const keys = Object.keys(arr[0]);
       const header = keys.join(';');
       const rows = arr.map(obj => keys.map(k => {
-        let val = obj[k] === null || obj[k] === undefined ? '' : String(obj[k]);
+        let val = obj[k];
+        if (val === null || val === undefined) {
+          val = '';
+        } else if (typeof val === 'number') {
+          val = val.toLocaleString('pt-BR', { useGrouping: false });
+        } else {
+          val = String(val);
+        }
         val = val.replace(/"/g, '""'); // Escapa aspas
         return `"${val}"`;
       }).join(';'));
