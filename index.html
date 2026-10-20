@@ -263,6 +263,7 @@
       </div>
 
       <div style="display: flex; align-items: center; gap: 15px;">
+        <button id="btnExportData" class="btn btn-secondary" style="display: none; font-size: 0.75rem; padding: 6px 10px;" onclick="openExportModal()"><i class="fa-solid fa-download"></i> Exportar Dados</button>
         <span id="syncIndicator" class="sync-status status-offline"><i class="fa-solid fa-circle-dot"></i> Modo Offline</span>
         <button class="theme-toggle-btn" onclick="toggleTheme()">
           <i class="fa-solid fa-moon" id="themeIcon"></i> <span id="themeText">Escuro</span>
@@ -697,6 +698,22 @@
           <button type="submit" class="btn btn-accent"><i class="fa-solid fa-check"></i> Entrar</button>
         </div>
       </form>
+    </div>
+  </div>
+
+  <div id="exportModal" class="modal-backdrop">
+    <div class="modal glass" style="max-width: 450px;">
+      <h3 style="margin-bottom: 15px; display: flex; align-items: center; gap: 8px;"><i class="fa-solid fa-file-export"></i> Exportar Base de Dados</h3>
+      <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 20px;">Baixe os dados atuais do sistema para migração ou análise. O vínculo entre NE e DANFE é feito pela coluna <strong>id</strong> e <strong>empenho_id</strong>.</p>
+      
+      <div style="display: flex; flex-direction: column; gap: 10px; margin-bottom: 20px;">
+        <button class="btn btn-secondary" onclick="exportData('csv')" style="justify-content: center;"><i class="fa-solid fa-file-csv" style="color: #10b981;"></i> CSV (Planilhas Google / Excel)</button>
+        <button class="btn btn-secondary" onclick="exportData('json')" style="justify-content: center;"><i class="fa-solid fa-file-code" style="color: #3b82f6;"></i> JSON (Cópia Bruta de Banco)</button>
+      </div>
+      
+      <div style="display:flex; justify-content:flex-end;">
+        <button type="button" class="btn btn-secondary" onclick="closeExportModal()">Fechar</button>
+      </div>
     </div>
   </div>
 
@@ -2077,6 +2094,57 @@
 
     function closeLoginModal() { document.getElementById('loginModal').style.display = 'none'; }
 
+    /* ==========================================================
+     * EXPORTAÇÃO DE DADOS (MIGRAÇÃO)
+     * ========================================================== */
+    function openExportModal() { document.getElementById('exportModal').style.display = 'flex'; }
+    function closeExportModal() { document.getElementById('exportModal').style.display = 'none'; }
+
+    function downloadFile(content, fileName, mimeType) {
+      const blob = new Blob([content], { type: mimeType });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = fileName;
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+
+    function jsonToCSV(arr) {
+      if (!arr || arr.length === 0) return '';
+      const keys = Object.keys(arr[0]);
+      const header = keys.join(';');
+      const rows = arr.map(obj => keys.map(k => {
+        let val = obj[k] === null || obj[k] === undefined ? '' : String(obj[k]);
+        val = val.replace(/"/g, '""'); // Escapa aspas
+        return `"${val}"`;
+      }).join(';'));
+      return [header, ...rows].join('\n');
+    }
+
+    function exportData(format) {
+      if (!isEditorOrAdmin()) return;
+      
+      // Limpa os dados de objetos aninhados (referências de interface) antes da exportação
+      const empenhosExp = state.nes.map(n => {
+        const { danfes_relacionais, ...resto } = n;
+        return resto;
+      });
+      const danfesExp = state.danfesGlobal;
+
+      if (format === 'json') {
+        const dataObj = { empenhos: empenhosExp, danfes: danfesExp };
+        downloadFile(JSON.stringify(dataObj, null, 2), `dspace_bkp_${Date.now()}.json`, 'application/json');
+      } else if (format === 'csv') {
+        const csvEmpenhos = jsonToCSV(empenhosExp);
+        const csvDanfes = jsonToCSV(danfesExp);
+        // \uFEFF é o BOM (Byte Order Mark) para forçar o Excel a ler em UTF-8
+        downloadFile('\uFEFF' + csvEmpenhos, `empenhos_${Date.now()}.csv`, 'text/csv;charset=utf-8;');
+        downloadFile('\uFEFF' + csvDanfes, `danfes_${Date.now()}.csv`, 'text/csv;charset=utf-8;');
+      }
+      closeExportModal();
+    }
+
     async function doLogin(e) {
       if (e) e.preventDefault();
       
@@ -2140,6 +2208,9 @@
       document.getElementById('navFeedback').style.display = editorOuAdmin ? '' : 'none';
       document.getElementById('btnNovaNE').style.display = editorOuAdmin ? '' : 'none';
       document.getElementById('btnLixeira').style.display = editorOuAdmin ? '' : 'none';
+      
+      const btnExport = document.getElementById('btnExportData');
+      if (btnExport) btnExport.style.display = editorOuAdmin ? '' : 'none';
 
       if (!editorOuAdmin) {
         state.showBulkPanel = false;
